@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_force_directed_graph/flutter_force_directed_graph.dart';
 import 'package:matrix4_transform/matrix4_transform.dart';
 
+const buildNumber = 2;
 const double arrowHeight = 7;
 const double arrowWidth = 7;
 const double lineWidth = 3;
@@ -21,9 +22,9 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Force Directed Graph Demo',
+      title: 'Visual Spreadsheet ${buildNumber}',
       theme: ThemeData(primarySwatch: Colors.blue),
-      home: const MyHomePage(title: 'Force Directed Graph Demo'),
+      home: const MyHomePage(title: 'Visual Spreadsheet ${buildNumber}'),
     );
   }
 }
@@ -32,6 +33,9 @@ class NodeContents {
   int? index;
   double? input;
   double? result;
+  TextEditingController? textEditingController = TextEditingController(
+    text: '0',
+  );
   NodeContents({this.index, this.input, this.result});
 }
 
@@ -64,15 +68,15 @@ class _MyHomePageState extends State<MyHomePage> {
     _controller =
         ForceDirectedGraphController(
           graph: ForceDirectedGraph.generateNTree(
-            nodeCount: 50,
-            maxDepth: 3,
+            nodeCount: 1,
+            maxDepth: 20,
             n: 4,
             generator: () {
               _nodeCount++;
               return NodeContents(
                 index: _indexIndex++,
                 input: _nodeCount.toDouble(),
-                result: 99.0,
+                result: 0,
               );
             },
           ),
@@ -96,14 +100,35 @@ class _MyHomePageState extends State<MyHomePage> {
     super.dispose();
   }
 
-  String getResult(NodeContents nodeContent) {
-    for (var edge in _controller.graph.edges) {
-      // print('(FF5)${edge.a.data.index}....${edge.b.data.index}');
-      if (edge.a.data.index == nodeContent.index) {
-        print('(FF6)${edge.a.data.index}....${edge.b.data.index}');
+  void setControllerResult({int? index, double? value}) {
+    for (var node in _controller.graph.nodes) {
+      if (node.data.index == index) {
+        node.data.result = value;
+        break;
       }
     }
-    return nodeContent.index.toString();
+  }
+
+  void setControllerInput({int? index, double? value}) {
+    for (var node in _controller.graph.nodes) {
+      if (node.data.index == index) {
+        node.data.input = value;
+        break;
+      }
+    }
+  }
+
+  String getResult(NodeContents nodeContent) {
+    double total = nodeContent.input!;
+    for (var edge in _controller.graph.edges) {
+      // print('(FF5)${edge.a.data.index}....${edge.b.data.index}');
+      if (edge.b.data.index == nodeContent.index) {
+        total = total + edge.a.data.result;
+        print('(FF6)${edge.a.data.index}....${edge.b.data.index}++++${total}');
+      }
+    }
+    setControllerResult(index: nodeContent.index, value: total);
+    return total.toString();
   }
 
   @override
@@ -138,6 +163,70 @@ class _MyHomePageState extends State<MyHomePage> {
                 }
 
                 return GestureDetector(
+                  onSecondaryTap: () {
+                    print('(FF10)');
+
+                    showDialog<double>(
+                      context: context,
+                      builder: (BuildContext context) {
+                        return AlertDialog(
+                          title: const Text('Enter Value'),
+                          content: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              TextField(
+                                controller: data.textEditingController,
+                                onChanged: (value) {
+                                  print('(FF12)');
+                                },
+                              ),
+
+                              ElevatedButton(
+                                child: const Text('Enter'),
+                                onPressed: () {
+                                  String value =
+                                      data.textEditingController!.text;
+                                  double? doubleValue = double.tryParse(value);
+                                  print(
+                                    '(FF11)${value}....${doubleValue}++++${data.index}',
+                                  );
+                                  if (doubleValue != null) {
+                                    setState(() {
+                                      setControllerInput(
+                                        index: data.index,
+                                        value: doubleValue,
+                                      );
+                                    });
+                                  }
+                                  Navigator.of(context).pop(doubleValue);
+                                },
+                              ),
+                              ElevatedButton(
+                                child: const Text('Add node'),
+                                onPressed: () {
+                                  print('(FF13)');
+
+                                  _nodeCount++;
+                                  // _controller.addNode(
+                                  //   NodeContents(index: _indexIndex, input: 0, result: 0),
+                                  // );
+
+                                  _controller.addEdgeByData(data, NodeContents(index: _indexIndex, input: 0, result: 0));
+                                  _indexIndex++;
+
+                                  _nodes.clear();
+                                  _edges.clear();
+
+
+                                  Navigator.of(context).pop();
+                                },
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    );
+                  },
                   onTap: () {
                     print("onTap $data");
                     setState(() {
@@ -156,7 +245,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     });
                   },
                   child: Container(
-                    width: 100,
+                    width: 110,
                     height: 24,
                     decoration: BoxDecoration(
                       color: Colors.white,
@@ -165,7 +254,16 @@ class _MyHomePageState extends State<MyHomePage> {
                     ),
                     alignment: Alignment.center,
                     child: _scale > 0.5
-                        ? Text('${data.input}|${getResult(data)}')
+                        ? Row(
+                            children: [
+                              Container(
+                                width: 100,
+                                height: 22,
+                                //     color: Colors.amber,
+                                child: Text('${data.input}|${getResult(data)}'),
+                              ),
+                            ],
+                          )
                         : null,
                   ),
                 );
@@ -217,14 +315,15 @@ class _MyHomePageState extends State<MyHomePage> {
       angle = pi;
     }
     return Transform.rotate(
-        angle: angle,
-        child: ClipPath(
-      clipper: TsClip1(a: a, b: b),
-      child: Container(
-        width: distance,
-        height: boxHeight * 2,
-        color: Colors.black87,
-      )),
+      angle: angle,
+      child: ClipPath(
+        clipper: TsClip1(a: a, b: b),
+        child: Container(
+          width: distance,
+          height: boxHeight * 2,
+          color: Colors.black87,
+        ),
+      ),
     );
   }
 
@@ -235,7 +334,7 @@ class _MyHomePageState extends State<MyHomePage> {
           onPressed: () {
             _nodeCount++;
             _controller.addNode(
-              NodeContents(index: _indexIndex, input: 98, result: 97),
+              NodeContents(index: _indexIndex, input: 0, result: 0),
             );
             _indexIndex++;
             _nodes.clear();
@@ -370,7 +469,7 @@ class _MyHomePageState extends State<MyHomePage> {
               _controller.locateTo(data);
             });
           },
-          child: Text('locateTo ${_controller.graph.nodes[_locatedTo].data}'),
+          child: Text('dump'),
         ),
         ElevatedButton(
           onPressed: () {
