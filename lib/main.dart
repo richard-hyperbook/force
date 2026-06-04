@@ -32,8 +32,14 @@ class MyApp extends StatelessWidget {
 }
 
 enum NodeKind { kindDouble, kindDateTime, kindString }
-enum NodeOperation {illegal, addDouble, addDayToDate, latestDate, addDoubleToString}
 
+enum NodeOperation {
+  illegal,
+  addDouble,
+  addDayToDate,
+  latestDate,
+  addDoubleToString,
+}
 
 class NodeContents {
   int? index;
@@ -117,22 +123,25 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void setControllerResult({int? index, dynamic value}) {
-    for (var node in _controller.graph.nodes) {
-      if (node.data.index == index) {
-        if (value is double){
-          node.data.doubleResult = value;
+    print('(FF331)${index}....${value}');
+    for (int i = 0; i < _controller.graph.nodes.length; i++) {
+      if (_controller.graph.nodes[i].data.index == index) {
+        if (value is double) {
+          _controller.graph.nodes[i].data.doubleResult = value;
         } else {
-          if (value is DateTime){
-            node.data.dateTimeResult = value;
+          if (value is DateTime) {
+            _controller.graph.nodes[i].data.dateTimeResult = value;
           } else {
-            if (value is String){
-              node.data.stringResult = value;
+            if (value is String) {
+              _controller.graph.nodes[i].data.stringResult = value;
             }
           }
         }
+        print('(FF332)${_controller.graph.nodes[i].data.index}++++${_controller.graph.nodes[i].data.doubleResult}....${_controller.graph.nodes[i].data.dateTimeResult},,,,${_controller.graph.nodes[i].data.stringResult}');
         break;
       }
     }
+
   }
 
   void setControllerInput({int? index, dynamic value}) {
@@ -154,33 +163,59 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
 
-
-  dynamic action({
-    dynamic total,
-  Edge? edge,
-  }) {
+  dynamic action({dynamic total, Edge? edge, isFirstEdge = false}) {
     dynamic result;
-    // dynamic addDouble(){
-    //   result = n!.result + a!.data.result;
-    // }
-    const Map<NodeKind, Map<NodeKind, NodeOperation>> kindMap = {
-      NodeKind.kindDouble : {
-      NodeKind.kindDouble: NodeOperation.addDouble,
-        NodeKind.kindDateTime: NodeOperation.addDayToDate,
-        NodeKind.kindString: NodeOperation.addDoubleToString
-      }
-    };
+   const Map<NodeKind, NodeOperation> mapADoubleBDouble = {
+     NodeKind.kindDouble: NodeOperation.addDouble,
+     NodeKind.kindDateTime: NodeOperation.addDayToDate,
+     NodeKind.kindString: NodeOperation.addDoubleToString,
+   };
 
-
-
+    const Map<NodeKind, Map> aMap = {NodeKind.kindDouble: mapADoubleBDouble};
     NodeKind bKind = edge!.b.data.kind;
     NodeKind aKind = edge.a.data.kind;
-    return 1;
+    NodeOperation op = aMap[aKind]![bKind]!;
+    switch(op){
+      case(NodeOperation.addDouble):
+        double inputValue = 0.0;
+        if(isFirstEdge){
+          inputValue = double.tryParse(edge.b.data.input)?? 0;
+        }
+        result = (total?? 0.0) + inputValue + (edge.a.data.doubleResult?? 0);
+        //setControllerResult(index: edge.b.data.index, value: result);
+        print('(FF330)${edge.b.data.index},,,,${result}....${edge.b.data.doubleResult}');
+        break;
+      case(NodeOperation.addDayToDate):
+        edge.b.data.DateTimeResult = edge.b.data.input + edge.a.data.dateTimeResult;
+        break;
+      case(NodeOperation.addDoubleToString):
+        edge.b.data.stringResult = edge.b.data.input + edge.a.data.stringResult;
+        break;
+      case(NodeOperation.latestDate):
+        edge.b.data.result = edge.b.data.input + edge.a.data.result;
+        break;
+      case(NodeOperation.illegal):
+        edge.b.data.result = edge.b.data.input + edge.a.data.result;
+        break;
+    }
+    print('(FF320)${op}....${edge.b.data.input},,,,${edge.a.data.doubleResult}++++${edge.b.data.doubleResult}????${result}');
+    return result;
   }
 
   String getResult(NodeContents nodeContents) {
-    dynamic total = nodeContents.input;
-
+    dynamic total;
+    /*switch(nodeContents.kind){
+      case(NodeKind.kindDouble):
+        total = double.tryParse(nodeContents.input!)?? 0.0; break;
+      case(NodeKind.kindDateTime):
+        total = double.tryParse(nodeContents.input!)?? 0.0; break;
+      case(NodeKind.kindString):
+        total = nodeContents.input!; break;
+      case(null):
+        total = null; break;
+    }*/
+    bool edgeFound = false;
+    bool isFirstEdge = true;
     for (var edge in _controller.graph.edges) {
       print(
         '(FF5)${nodeContents.index}----${nodeContents.kind}++++${edge.a.data.index}....${edge.a.data.kind}>>>>${edge.b.data.index},,,,${edge.b.data.kind}',
@@ -189,44 +224,17 @@ class _MyHomePageState extends State<MyHomePage> {
         print('(FF51)${nodeContents.kind}');
         Node? nn;
         nn = edge.a;
-        action(total: total, edge: edge);
-
-        /*     switch(nodeContent.kind){
-          case NodeKind.kindDouble:
-            print('(FF52A)${edge.a.data.kind}');
-            switch(edge.a.data.kind) {
-              case(NodeKind.kindDouble):
-                total = (total?? 0) + edge.a.data.result;
-                print('(FF6A)${nodeContent.index}!!!!${edge.a.data.index}....${edge.b.data.index}++++${total}');
-                break;
-              case (NodeKind.kindDateTime):
-                setControllerKind(
-                    index: nodeContent.index, kind: NodeKind.kindDateTime);
-                total = DateTime(
-                  edge.a.data.year,
-                  edge.a.data.month,
-                  edge.a.data.day + nodeContent.input,
-                );
-                print('(FF6B)${edge.a.data.index}....${edge.b.data.index}++++${total}');
-                break;
-              case NodeKind.kindString:
-                total = (total?? '') + edge.a.data.result;
-                print('(FF6C)${edge.a.data.index}....${edge.b.data.index}++++${total}');
-                break;
-              case null:
-                total = total + edge.a.data.result;
-                print('(FF6C)${edge.a.data.index}....${edge.b.data
-                    .index}++++${total}');
-                break;
-            }
-          case NodeKind.kindDateTime: break;
-          case NodeKind.kindString: break;
-          case null: break;
-
-        }*/
+        total = action(total: total, edge: edge, isFirstEdge: isFirstEdge);
+        edgeFound = true;
+        isFirstEdge = false;
       }
     }
-    setControllerResult(index: nodeContents.index, value: total);
+    if(edgeFound) {
+      setControllerResult(index: nodeContents.index, value: total);
+    } else {
+      setControllerResult(index: nodeContents.index, value: double.tryParse(nodeContents.input!)?? 0.0);
+      total = double.tryParse(nodeContents.input!)?? 0.0;
+    }
     return total.toString();
   }
 
@@ -276,14 +284,12 @@ class _MyHomePageState extends State<MyHomePage> {
                 child: const Text('Enter'),
                 onPressed: () {
                   String value = data.textEditingController!.text;
-                  double? doubleValue = double.tryParse(value);
-                  print('(FF11)${value}....${doubleValue}++++${data.index}');
-                  if (doubleValue != null) {
+                 // double? doubleValue = double.tryParse(value);
+                  print('(FF11)${value}++++${data.index}');
                     setState(() {
-                      setControllerInput(index: data.index, value: doubleValue);
+                      setControllerInput(index: data.index, value: value);
                     });
-                  }
-                  Navigator.of(context).pop(doubleValue);
+                  Navigator.of(context).pop();
                 },
               ),
               Row(
@@ -318,7 +324,6 @@ class _MyHomePageState extends State<MyHomePage> {
                           kind: NodeKind.kindDateTime,
                           index: _indexIndex,
                           input: '',
-
                         ),
                       );
                       await selectDate(index: _indexIndex);
@@ -339,7 +344,6 @@ class _MyHomePageState extends State<MyHomePage> {
                           kind: NodeKind.kindString,
                           index: _indexIndex,
                           input: '',
-
                         ),
                       );
                       _indexIndex++;
@@ -364,7 +368,6 @@ class _MyHomePageState extends State<MyHomePage> {
                           kind: NodeKind.kindDouble,
                           index: _indexIndex,
                           input: null,
-
                         ),
                       );
                       _indexIndex++;
@@ -384,7 +387,6 @@ class _MyHomePageState extends State<MyHomePage> {
                           kind: NodeKind.kindDateTime,
                           index: _indexIndex,
                           input: null,
-
                         ),
                       );
                       _indexIndex++;
@@ -404,7 +406,6 @@ class _MyHomePageState extends State<MyHomePage> {
                           kind: NodeKind.kindString,
                           index: _indexIndex,
                           input: null,
-
                         ),
                       );
                       _indexIndex++;
@@ -446,6 +447,20 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
+  Widget drawNode(NodeContents data){
+    switch(data.kind){
+      case(NodeKind.kindDouble):
+        return Text('${data.input}>${getResult(data)}');
+      case(NodeKind.kindDateTime):
+        return Text('${data.input}>${getResult(data)}');
+      case(NodeKind.kindString):
+        return Text('${data.input}>${getResult(data)}');
+      case(null):
+        return Text('ERROR');
+
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -476,14 +491,20 @@ class _MyHomePageState extends State<MyHomePage> {
                   );
                 }
                 final Color color;
-                if (_draggingData == data) {
-                  color = Colors.blue;
-                } else if (_nodes.contains(data)) {
-                  color = Colors.green;
-                } else {
-                  color = Colors.red;
-                }
+                // if (_draggingData == data) {
+                //   color = Colors.blue;
+                // } else if (_nodes.contains(data)) {
+                //   color = Colors.green;
+                // } else {
+                //   color = Colors.red;
+                // }
+                switch (data.kind){
+                  case NodeKind.kindDouble: color = Colors.purple; break;
+                  case NodeKind.kindDateTime: color = Colors.red; break;
+                  case NodeKind.kindString: color = Colors.green; break;
+                  case null: color = Colors.black; break;
 
+                }
                 return GestureDetector(
                   onSecondaryTap: () {
                     print('(FF10)');
@@ -506,7 +527,7 @@ class _MyHomePageState extends State<MyHomePage> {
                                 width: 100,
                                 height: 22,
                                 //     color: Colors.amber,
-                                child: Text('${data.input}|${getResult(data)}'),
+                                child: drawNode(data),
                               ),
                             ],
                           )
@@ -536,14 +557,6 @@ class _MyHomePageState extends State<MyHomePage> {
                     });
                   },
                   child: arrowEdge(distance: distance, a: a, b: b),
-
-                  /*Container(
-                    width: distance,
-                    height: 2,
-                    color: color,
-                    alignment: Alignment.center,
-                    child: _scale > 0.5 ? Text('$a <-> $b') : null,
-                  ),*/
                 );
               },
             ),
@@ -615,20 +628,6 @@ class _MyHomePageState extends State<MyHomePage> {
                 },
           child: const Text('add edge'),
         ),
-        /*        ElevatedButton(
-          onPressed: _edges.isEmpty
-              ? null
-              : () {
-            for (final edge in _edges) {
-              final a = int.parse(edge.split(' <-> ').first);
-              final b = int.parse(edge.split(' <-> ').last);
-              _controller.deleteEdgeByData(a, b);
-            }
-            _nodes.clear();
-            _edges.clear();
-          },
-          child: const Text('del edge'),
-        ),*/
         ElevatedButton(
           onPressed: () {
             _controller.needUpdate();
@@ -646,7 +645,7 @@ class _MyHomePageState extends State<MyHomePage> {
           onPressed: () {
             for (var node in _controller.graph.nodes) {
               print(
-                '(FFDN)${node.data.index}<<<<${node.data.input}££££${node.data.kind}',
+                '(FFDN)${node.data.index}<<<<${node.data.input}££££${node.data.kind};;;;${node.data.doubleResult}::::${node.data.dateTimeResult}@@@@${node.data.stringResult}',
               );
             }
             for (var edge in _controller.graph.edges) {
@@ -677,15 +676,6 @@ class _MyHomePageState extends State<MyHomePage> {
           },
           child: const Text('reset'),
         ),
-
-        /*Slider(
-          value: _scale,
-          min: _controller.minScale,
-          max: _controller.maxScale,
-          onChanged: (value) {
-            _controller.scale = value;
-          },
-        ),*/
       ],
     );
   }
@@ -693,116 +683,7 @@ class _MyHomePageState extends State<MyHomePage> {
   void _clearData() {
     _nodes.clear();
     _edges.clear();
-
     _locatedTo = 0;
-  }
-
-  Future<Map<String, int>?> _showTreeDialogWithInput(BuildContext context) {
-    final TextEditingController nodeCountController = TextEditingController(
-      text: '50',
-    );
-    final TextEditingController maxDepthController = TextEditingController(
-      text: '3',
-    );
-    final TextEditingController nController = TextEditingController(text: '3');
-
-    return showDialog<Map<String, int>>(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Enter Values'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              TextField(
-                controller: nodeCountController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: "Node Count"),
-              ),
-              TextField(
-                controller: maxDepthController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: "Max Depth"),
-              ),
-              TextField(
-                controller: nController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: "Max Children"),
-              ),
-            ],
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('Cancel'),
-              onPressed: () {
-                Navigator.of(context).pop(null);
-              },
-            ),
-            TextButton(
-              child: const Text('Submit'),
-              onPressed: () {
-                try {
-                  final result = {
-                    'nodeCount': int.parse(nodeCountController.text),
-                    'maxDepth': int.parse(maxDepthController.text),
-                    'n': int.parse(nController.text),
-                  };
-                  Navigator.of(context).pop(result);
-                } catch (e) {
-                  Navigator.of(context).pop(null);
-                }
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Future<Map<String, int>?> _showNodeDialogWithInput(BuildContext context) {
-    final TextEditingController nodeCountController = TextEditingController(
-      text: '50',
-    );
-
-    return showDialog<Map<String, int>>(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Enter Values'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              TextField(
-                controller: nodeCountController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: "Node Count"),
-              ),
-            ],
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('Cancel'),
-              onPressed: () {
-                Navigator.of(context).pop(null);
-              },
-            ),
-            TextButton(
-              child: const Text('Submit'),
-              onPressed: () {
-                try {
-                  final result = {
-                    'nodeCount': int.parse(nodeCountController.text),
-                  };
-                  Navigator.of(context).pop(result);
-                } catch (e) {
-                  Navigator.of(context).pop(null);
-                }
-              },
-            ),
-          ],
-        );
-      },
-    );
   }
 }
 
