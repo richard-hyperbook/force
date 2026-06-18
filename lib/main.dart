@@ -3,19 +3,21 @@
 import 'dart:math';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:flutter_force_directed_graph/flutter_force_directed_graph.dart';
+// import 'package:flutter_force_directed_graph/flutter_force_directed_graph.dart';
 import 'package:matrix4_transform/matrix4_transform.dart';
 import 'package:intl/intl.dart';
 import 'package:toastification/toastification.dart';
 import 'package:vector_math/vector_math.dart' as vector;
+import 'flutter_force_directed_graph.dart';
 
-const buildNumber = 8;
+const buildNumber = 9;
 const double arrowHeight = 7;
 const double arrowWidth = 7;
 const double lineWidth = 3;
 const double boxHeight = 25;
 const double chainYincrement = boxHeight + 10;
-NodeContents? edgeStartNodeContents;
+//NodeContents? edgeStartNodeContents;
+
 NodeContents? edgeInputNodeContentsA;
 NodeContents? edgeCommonNodeContentsA;
 NodeContents? edgeOutputNodeContentsA;
@@ -87,6 +89,8 @@ class NodeContents {
   double? doubleResult;
   DateTime? dateTimeResult;
   String? stringResult;
+  bool? isStartNode;
+  bool? isEndNode;
 
   //TextEditingController? textEditingController = TextEditingController(
   // text: '',
@@ -98,6 +102,8 @@ class NodeContents {
     this.doubleResult,
     this.dateTimeResult,
     this.stringResult,
+    this.isStartNode,
+    this.isEndNode,
   });
 
   Map<String, dynamic> toJson() {
@@ -108,6 +114,8 @@ class NodeContents {
       'doubleResult': doubleResult,
       'dateTimeResult': dateTimeResult?.toIso8601String(),
       'stringResult': stringResult,
+      'isStartNode': isStartNode,
+      'isEndNode': isEndNode,
     };
     print('(FF750)${this.index}....${this.kind},,,,${m}');
     return m;
@@ -123,7 +131,9 @@ class NodeContents {
       //json['doubleResult'] as double,
       dateTimeResult = DateTime.parse(json['dateTimeResult'] as String),
       //json['dateTimeResult'] as DateTime,
-      stringResult = json['stringResul'] as String;
+      stringResult = json['stringResul'] as String,
+      isStartNode = json['isStartNode'] as bool,
+      isEndNode = json['isEndNode'] as bool;
 
   /*LinkItem.fromJson(Map<String, dynamic> json)
       : name = json['n'],
@@ -153,14 +163,14 @@ nodeContentsfromJson(Map<String, dynamic> json) {
 
 late final ForceDirectedGraphController<NodeContents> _controller;
 
-class EdgeExtra {
+/*class EdgeExtra {
   int? indexA;
   int? indexB;
   bool? isActive;
   EdgeExtra(this.indexA, this.indexB, this.isActive);
-}
+}*/
 
-List<EdgeExtra> _edgeExtras = [];
+// List<EdgeExtra> _edgeExtras = [];
 
 void dumpGraph() {
   for (var node in _controller.graph.nodes) {
@@ -170,24 +180,26 @@ void dumpGraph() {
   }
   for (var edge in _controller.graph.edges) {
     print(
-      '(FFDE)${edge.a.data.index}${edge.a.data.kind}....${edge.b.data.index}${edge.b.data.kind}',
+      '(FFDE)${edge.a.data.index}${edge.a.data.kind}....${edge.b.data.index}${edge.b.data.kind},,,,${edge.edgeExtra.isActive}',
     );
   }
-  for (var edgeExtra in _edgeExtras) {
-    print(
-      '(FFDEE)${edgeExtra.indexA}----${edgeExtra.indexB}....${edgeExtra.isActive}',
-    );
-  }
+
 }
 
-EdgeExtra? getEdgeExtra({int? indexA, int? indexB}) {
-  for (int i = 0; i < _edgeExtras.length; i++) {
-    if ((_edgeExtras[i].indexA == indexA) &&
-        (_edgeExtras[i].indexB == indexB)) {
-      return _edgeExtras[i];
+int? getEdgeIntegerFromNodeIndexes({int? indexA, int? indexB}){
+  for (int i = 0; i < _controller.graph.edges.length; i++) {
+    if ((_controller.graph.edges[i].a.data.index == indexA) &&
+        (_controller.graph.edges[i].b.data.index == indexB)) {
+      return i;
     }
   }
   return null;
+}
+
+EdgeExtra? getEdgeExtra({int? indexA, int? indexB}) {
+  int? i = getEdgeIntegerFromNodeIndexes(indexA: indexA, indexB: indexB);
+  if (i == null) return null;
+      return _controller.graph.edges[i].edgeExtra;
 }
 
 bool isEdgeActive({int? indexA, int? indexB}) {
@@ -198,14 +210,10 @@ bool isEdgeActive({int? indexA, int? indexB}) {
   return ee!.isActive!;
 }
 
-void setEdgeExtraIsActive({int? indexA, int? indexB, bool isActive = true}) {
-  for (int i = 0; i < _edgeExtras.length; i++) {
-    if ((_edgeExtras[i].indexA == indexA) &&
-        (_edgeExtras[i].indexB == indexB)) {
-      _edgeExtras[i].isActive = isActive;
-      break;
-    }
-  }
+void setEdgeExtraIsActive({int? indexA, int? indexB, bool? isActive = true}) {
+  int? i = getEdgeIntegerFromNodeIndexes(indexA: indexA, indexB: indexB);
+  if (i == null) return;
+  _controller.graph.edges[i].edgeExtra.isActive = isActive;
 }
 
 void addEdgeByData({
@@ -213,8 +221,8 @@ void addEdgeByData({
   required NodeContents? nodeB,
   bool? isActive = true,
 }) {
-  _controller.addEdgeByData(nodeA!, nodeB!);
-  _edgeExtras.add(EdgeExtra(nodeA.index, nodeB.index, isActive));
+  _controller.addEdgeByData(nodeA!, nodeB!, EdgeExtra(isActive: isActive));
+
   print(
     '(FF761)${nodeA.index}....${nodeB.index}....${getEdgeExtra(indexA: nodeA.index, indexB: nodeB.index)}',
   );
@@ -226,9 +234,6 @@ void deleteEdgeByData({
   required NodeContents? nodeB,
 }) {
   _controller.deleteEdgeByData(nodeA!, nodeB!);
-  _edgeExtras.removeWhere((item) {
-    return ((nodeA.index == item.indexA) && (nodeB.index == item.indexB));
-  });
 }
 
 int _indexIndex = 0;
@@ -324,9 +329,27 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void setControllerInput({int? index, dynamic value}) {
-    for (var node in _controller.graph.nodes) {
-      if (node.data.index == index) {
-        node.data.input = value;
+    for (int i = 0; i < _controller.graph.nodes.length; i++) {
+      if (_controller.graph.nodes[i].data.index == index) {
+        _controller.graph.nodes[i].data.input = value;
+        break;
+      }
+    }
+  }
+
+  void setControllerIsStartNode({int? index, bool? value}) {
+    for (int i = 0; i < _controller.graph.nodes.length; i++) {
+      if (_controller.graph.nodes[i].data.index == index) {
+        _controller.graph.nodes[i].data.isStartNode = value;
+        break;
+      }
+    }
+  }
+
+  void setControllerIsEndNode({int? index, bool? value}) {
+    for (int i = 0; i < _controller.graph.nodes.length; i++) {
+      if (_controller.graph.nodes[i].data.index == index) {
+        _controller.graph.nodes[i].data.isEndNode = value;
         break;
       }
     }
@@ -363,6 +386,11 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   dynamic processEdge({dynamic total, Edge? edge, isFirstEdge = false}) {
+    EdgeExtra? edgeExtra = getEdgeExtra(
+      indexA: edge!.a.data.index,
+      indexB: edge.b.data.index,
+    );
+    if (!edgeExtra!.isActive!) return total;
     dynamic result = total;
     const Map<NodeKind, NodeOperation> mapADouble = {
       NodeKind.kindDouble: NodeOperation.addDouble,
@@ -454,6 +482,7 @@ class _MyHomePageState extends State<MyHomePage> {
         nn = edge.a;
         total = processEdge(total: total, edge: edge, isFirstEdge: isFirstEdge);
         edgeFound = true;
+        if (total == null) edgeFound = false;
         isFirstEdge = false;
       }
     }
@@ -497,16 +526,18 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Color setBoxColor(NodeContents node) {
-    if (edgeStartNodeContents == null) {
+    if ((node.isStartNode == null) || (node.isEndNode == null)) {
       print('(FF201)${node}');
       return Colors.white;
     }
-    print('(FF202)${edgeStartNodeContents!.index}....${node.index}');
-    if (node.index == edgeStartNodeContents!.index) {
+    print('(FF202)${node.index}');
+    if (node.isStartNode!) {
       return Colors.amber;
-    } else {
-      return Colors.white;
     }
+    if (node.isEndNode!) {
+      return Colors.pink;
+    }
+    return Colors.white;
   }
 
   Future<void> selectDate({int? index}) async {
@@ -674,11 +705,14 @@ class _MyHomePageState extends State<MyHomePage> {
               Row(
                 children: [
                   ElevatedButton(
-                    child: const Text('Start edge'),
+                    child: const Text('Set start node'),
                     onPressed: () {
                       setState(() {
                         print('(FF16)');
-                        edgeStartNodeContents = data;
+                        setControllerIsStartNode(
+                          index: data.index!,
+                          value: true,
+                        );
                       });
 
                       Navigator.of(context).pop();
@@ -686,17 +720,14 @@ class _MyHomePageState extends State<MyHomePage> {
                   ),
 
                   ElevatedButton(
-                    child: const Text('End edge'),
+                    child: const Text('Set end node'),
                     onPressed: () {
                       print('(FF17)');
-                      if (edgeStartNodeContents != null) {
-                        /*_controller.*/
-                        addEdgeByData(
-                          nodeA: edgeStartNodeContents!,
-                          nodeB: data,
-                        );
-                        edgeStartNodeContents = null;
-                      }
+                      setState(() {
+                        print('(FF16)');
+                        setControllerIsEndNode(index: data.index!, value: true);
+                      });
+
                       Navigator.of(context).pop();
                     },
                   ),
@@ -915,13 +946,13 @@ class _MyHomePageState extends State<MyHomePage> {
                 },
                 onDraggingUpdate: (data) {},
                 nodesBuilder: (context, data) {
-                  if (edgeStartNodeContents == null) {
+                  /*               if (edgeStartNodeContents == null) {
                     print('(FF200A)${data.index}....${edgeStartNodeContents}');
                   } else {
                     print(
                       '(FF200B)${data.index}....${edgeStartNodeContents!.index}',
                     );
-                  }
+                  }*/
                   final Color color;
                   // if (_draggingData == data) {
                   //   color = Colors.blue;
@@ -988,7 +1019,9 @@ class _MyHomePageState extends State<MyHomePage> {
                   if ((isIndexEqual(edgeOutputNodeContentsA, a)) &&
                       (isIndexEqual(edgeOutputNodeContentsB, b)))
                     color = Colors.green;
-                  print('(FF762)${a.index}....${b.index},,,,${isEdgeActive(indexA: a.index, indexB: b.index)}');
+                  print(
+                    '(FF762)${a.index}....${b.index},,,,${isEdgeActive(indexA: a.index, indexB: b.index)}',
+                  );
                   dumpGraph();
                   if (!isEdgeActive(indexA: a.index, indexB: b.index)) {
                     color = Colors.grey;
@@ -1084,7 +1117,9 @@ class _MyHomePageState extends State<MyHomePage> {
                                 ? Text('Make passive')
                                 : Text('Make active'),
                             onPressed: () {
-                              print('(FF763)${isEdgeActive(indexA: a.index, indexB: b.index)}');
+                              print(
+                                '(FF763)${isEdgeActive(indexA: a.index, indexB: b.index)}',
+                              );
                               setEdgeExtraIsActive(
                                 indexA: a.index,
                                 indexB: b.index,
@@ -1093,7 +1128,9 @@ class _MyHomePageState extends State<MyHomePage> {
                                   indexB: b.index,
                                 ),
                               );
-                              print('(FF76)${a.index}....${b.index},,,,${isEdgeActive(indexA: a.index, indexB: b.index)}');
+                              print(
+                                '(FF76)${a.index}....${b.index},,,,${isEdgeActive(indexA: a.index, indexB: b.index)}',
+                              );
                               dumpGraph();
                               Navigator.of(context).pop();
                             },
@@ -1229,6 +1266,41 @@ class _MyHomePageState extends State<MyHomePage> {
             }
           },
           child: const Text('reset'),
+        ),
+        ElevatedButton(
+          child: const Text('Add edges'),
+          onPressed: () {
+            for (int i = 0; i < _controller.graph.nodes.length; i++) {
+              if (_controller.graph.nodes[i].data.isStartNode ??
+                  false)
+                for (
+                int j = 0;
+                j < _controller.graph.nodes.length;
+                j++
+                ) {
+                  if (_controller.graph.nodes[j].data.isEndNode ??
+                      false) {
+                    addEdgeByData(
+                      nodeA: _controller.graph.nodes[i].data,
+                      nodeB: _controller.graph.nodes[j].data,
+                    );
+                  }
+                }
+            }
+            for (int i = 0; i < _controller.graph.nodes.length; i++) {
+              setControllerIsStartNode(
+                index: _controller.graph.nodes[i].data.index,
+                value: false,
+              );
+              setControllerIsEndNode(
+                index: _controller.graph.nodes[i].data.index,
+                value: false,
+              );
+            }
+            setState(() {
+
+            });
+          },
         ),
         Slider(
           value: _scale,
