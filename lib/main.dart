@@ -10,7 +10,7 @@ import 'package:toastification/toastification.dart';
 import 'package:vector_math/vector_math.dart' as vector;
 import 'flutter_force_directed_graph.dart';
 
-const buildNumber = 9;
+const buildNumber = 10;
 const double arrowHeight = 7;
 const double arrowWidth = 7;
 const double lineWidth = 3;
@@ -527,10 +527,10 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Color setBoxColor(NodeContents node) {
     if ((node.isStartNode == null) || (node.isEndNode == null)) {
-      print('(FF201)${node}');
+      print('(FF201)${node.index}....${node.isStartNode},,,,${node.isEndNode}');
       return Colors.white;
     }
-    print('(FF202)${node.index}');
+    print('(FF202)${node.index}....${node.isStartNode}');
     if (node.isStartNode!) {
       return Colors.amber;
     }
@@ -953,7 +953,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       '(FF200B)${data.index}....${edgeStartNodeContents!.index}',
                     );
                   }*/
-                  final Color color;
+                  Color color;
                   // if (_draggingData == data) {
                   //   color = Colors.blue;
                   // } else if (_nodes.contains(data)) {
@@ -976,7 +976,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       break;
                   }
                   return GestureDetector(
-                    onSecondaryTap: () {
+                    onTap: () {
                       print('(FF10)');
                       onNodeTap(data);
                     },
@@ -1082,7 +1082,7 @@ class _MyHomePageState extends State<MyHomePage> {
       child: ClipPath(
         clipper: DrawArrow(a: a, b: b),
         child: GestureDetector(
-          onSecondaryTap: () {
+          onTap: () {
             showDialog<double>(
               context: context,
               builder: (BuildContext context) {
