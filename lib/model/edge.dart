@@ -8,6 +8,17 @@ class EdgeExtra {
 
   bool? isActive;
   EdgeExtra({this.isActive});
+
+  Map<String, dynamic> toJson() {
+    Map<String, dynamic> m = {
+      'isActive': isActive,
+    };
+    print('(FF900)${this.isActive}////${m}');
+    return m;
+  }
+
+  EdgeExtra.fromJson(Map<String, dynamic> json)
+      : isActive = (json['index'] as bool);
 }
 
 class Edge {

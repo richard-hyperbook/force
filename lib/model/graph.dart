@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:math';
+import '../main.dart';
 
 import 'package:vector_math/vector_math.dart';
 
@@ -51,41 +52,64 @@ class ForceDirectedGraph<T> {
     }
   }
 
+  T nodeDataFromMap<T>(
+    Map<String, dynamic> nd,
+    NodeDataDeserializer<T>? deserializeData1,
+  ) {
+    T t = deserializeData1!(nd);
+    print('(FF1010)${t}');
+    return t;
+  }
+
+  Node nodeFromMap<T>(
+    Map<String, dynamic> nodeComplete,
+    NodeDataDeserializer<T>? deserializeData2,
+  ) {
+    final nd = nodeComplete['data'];
+    final pd = nodeComplete['position'];
+    print('(FF1002)${nd}....${nodeComplete}>>>>${deserializeData2.runtimeType}');
+    Node<T> node = Node<T>(
+      nodeDataFromMap(nd, deserializeData2),
+      Vector2(pd['x'], pd['y']),
+    );
+    return node;
+  }
+
   /// Create a graph from json.
   /// [resetPosition] will reset the position of the nodes.
   ForceDirectedGraph.fromJson(
     String json, {
-    NodeDataDeserializer<T>? deserializeData,
+    NodeDataDeserializer<T>? deserializeData3,
     bool resetPosition = false,
     this.config = const GraphConfig(),
   }) {
-    final data = jsonDecode(json);
-    final nodeMap = <T, Node<T>>{};
-    for (final nodeData in data['nodes']) {
-      final actualData = deserializeData == null
-          ? nodeData['data'] as T
-          : deserializeData(nodeData['data']);
-      final node = Node(actualData);
-      if (!resetPosition && nodeData['position'] != null) {
-        node.position =
-            Vector2(nodeData['position']['x'], nodeData['position']['y']);
-      }
-      nodes.add(node);
-      nodeMap[node.data] = node;
+    final decodedJson = jsonDecode(json);
+    print('(FF1001)${json}....${decodedJson}>>>>${deserializeData3.runtimeType}');
+
+    for (final nodeData in decodedJson['nodes']) {
+      Node<dynamic> node = nodeFromMap(nodeData, deserializeData3);
+      nodes.add(node as Node<T>);
+      // print('(FF1003A)${node}....${node.data!.index},,,,${node.data.kind}----${node.data.doubleResult}');
+      print(
+        '(FF1003B)${node}....${(node.data as NodeContents).index},,,,${node.position}',
+      );
     }
-    for (final edgeData in data['edges']) {
-      final actualDataA = deserializeData == null
-          ? edgeData['a'] as T
-          : deserializeData(edgeData['a']);
-      final actualDataB = deserializeData == null
-          ? edgeData['b'] as T
-          : deserializeData(edgeData['b']);
-      final a = nodeMap[actualDataA];
-      final b = nodeMap[actualDataB];
-      if (a != null && b != null) {
-        final edge = Edge(a, b, EdgeExtra(isActive: true)); //TODO - handle edgeExtra
-        edges.add(edge);
-      }
+
+    //The argument type 'NodeDataDeserializer<T>?' can't be assigned to the parameter type 'NodeDataDeserializer<Node<dynamic>>?'.
+    for (final edgeData in decodedJson['edges']) {
+      print('(FF1004)${edgeData}>>>>${deserializeData3.runtimeType}');
+      Node<dynamic> nodeA = nodeDataFromMap(
+        edgeData['a'],
+        deserializeData3 as  NodeDataDeserializer<Node<dynamic>>,
+      );
+      Node<dynamic> nodeB = nodeDataFromMap(
+        edgeData['b'],
+        deserializeData3 as NodeDataDeserializer<Node<dynamic>>,
+      );
+      EdgeExtra ee = EdgeExtra(isActive: edgeData['edgeExtra']['isActive']);
+      Edge edge = Edge(nodeA, nodeB, ee);
+      edges.add(edge);
+      print('(FF1005)${nodeA}....${nodeB},,,,${edge}');
     }
   }
 
@@ -107,7 +131,9 @@ class ForceDirectedGraph<T> {
       final newNode = Node(generator());
       children.add(newNode);
       addNode(newNode);
-      addEdge(Edge(node, newNode, EdgeExtra(isActive: true)));//TOD handle edgextra
+      addEdge(
+        Edge(node, newNode, EdgeExtra(isActive: true)),
+      ); //TOD handle edgextra
       remainingNodes--;
     }
 
@@ -157,16 +183,20 @@ class ForceDirectedGraph<T> {
       final others = kdTree.findNeighbors(node.position, config.repulsionRange);
       for (final other in others) {
         if (node == other) continue;
-        final repulsionForce =
-            node.calculateRepulsionForce(other, k: config.repulsion);
+        final repulsionForce = node.calculateRepulsionForce(
+          other,
+          k: config.repulsion,
+        );
         node.applyForce(repulsionForce);
       }
     }
     for (final edge in edges) {
       final attractionForce = edge.calculateAttractionForce(
-          k: config.elasticity, length: config.length);
-      final attractionForceDirectionA =
-          edge.calculateAttractionForceDirectionA();
+        k: config.elasticity,
+        length: config.length,
+      );
+      final attractionForceDirectionA = edge
+          .calculateAttractionForceDirectionA();
       final fa = attractionForceDirectionA * attractionForce;
       edge.a.applyForce(fa);
       edge.b.applyForce(-fa);
@@ -197,16 +227,21 @@ class ForceDirectedGraph<T> {
   String toJson({NodeDataSerializer<T>? serializeData}) {
     return jsonEncode({
       'nodes': nodes
-          .map((e) => {
-                'data': serializeData == null ? e.data : serializeData(e.data),
-                'position': {'x': e.position.x, 'y': e.position.y},
-              })
+          .map(
+            (e) => {
+              'data': serializeData == null ? e.data : serializeData(e.data),
+              'position': {'x': e.position.x, 'y': e.position.y},
+            },
+          )
           .toList(),
       'edges': edges
-          .map((e) => {
-                'a': serializeData == null ? e.a.data : serializeData(e.a.data),
-                'b': serializeData == null ? e.b.data : serializeData(e.b.data),
-              })
+          .map(
+            (e) => {
+              'a': serializeData == null ? e.a.data : serializeData(e.a.data),
+              'b': serializeData == null ? e.b.data : serializeData(e.b.data),
+              'edgeExtra': e.edgeExtra.toJson(),
+            },
+          )
           .toList(),
     });
   }

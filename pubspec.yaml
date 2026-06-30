@@ -38,6 +38,7 @@ dependencies:
   matrix4_transform: ^4.0.1
   intl: ^0.20.2
   toastification: ^3.2.0
+  appwrite: ^25.1.0
 
 dev_dependencies:
   flutter_test:
