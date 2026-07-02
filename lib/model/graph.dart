@@ -9,11 +9,11 @@ import 'edge.dart';
 import 'kd_tree.dart';
 import 'node.dart';
 
-typedef NodeDataSerializer<T> = dynamic Function(T data);
-typedef NodeDataDeserializer<T> = T Function(dynamic data);
+typedef NodeDataSerializer = dynamic Function(NodeContents data);
+typedef NodeDataDeserializer = NodeContents Function(dynamic data);
 
-class ForceDirectedGraph<T> {
-  final List<Node<T>> nodes = [];
+class ForceDirectedGraph {
+  final List<Node> nodes = [];
   final List<Edge> edges = [];
   final GraphConfig config;
 
@@ -29,7 +29,7 @@ class ForceDirectedGraph<T> {
     required int nodeCount,
     required int maxDepth,
     required int n,
-    required T Function() generator,
+    required NodeContents Function() generator,
     this.config = const GraphConfig(),
   }) {
     Random random = Random();
@@ -43,7 +43,7 @@ class ForceDirectedGraph<T> {
   /// [generator] is the generator of the node data. Make sure the data is unique.
   ForceDirectedGraph.generateNNodes({
     required int nodeCount,
-    required T Function() generator,
+    required NodeContents Function() generator,
     this.config = const GraphConfig(),
   }) {
     for (int i = 0; i < nodeCount; i++) {
@@ -52,34 +52,46 @@ class ForceDirectedGraph<T> {
     }
   }
 
-  T nodeDataFromMap<T>(
+  NodeContents nodeDataFromMap(
     Map<String, dynamic> nd,
-    NodeDataDeserializer<T>? deserializeData1,
+    NodeDataDeserializer? deserializeData1,
   ) {
-    T t = deserializeData1!(nd);
-    print('(FF1010)${t}');
-    return t;
+    NodeContents nc = deserializeData1!(nd);
+    print('(FF1010)${nc}');
+    return nc;
   }
 
-  Node nodeFromMap<T>(
+  Node nodeFromMap(
     Map<String, dynamic> nodeComplete,
-    NodeDataDeserializer<T>? deserializeData2,
+    NodeDataDeserializer? deserializeData2,
   ) {
     final nd = nodeComplete['data'];
     final pd = nodeComplete['position'];
     print('(FF1002)${nd}....${nodeComplete}>>>>${deserializeData2.runtimeType}');
-    Node<T> node = Node<T>(
+    Node node = Node(
       nodeDataFromMap(nd, deserializeData2),
       Vector2(pd['x'], pd['y']),
     );
     return node;
   }
 
+  Node? getNodeFromIndexLocal(int? index){
+    print('(FF4020)${index}....${nodes.length}');
+    for(int i = 0; i < nodes.length; i++){
+      print('(FF4021)${index}....${nodes[i].data.index},,,,${nodes[i]}');
+      if(index == nodes[i].data.index){
+        return nodes[i];
+      }
+    }
+    return null;
+  }
+
+
   /// Create a graph from json.
   /// [resetPosition] will reset the position of the nodes.
   ForceDirectedGraph.fromJson(
     String json, {
-    NodeDataDeserializer<T>? deserializeData3,
+    NodeDataDeserializer? deserializeData3,
     bool resetPosition = false,
     this.config = const GraphConfig(),
   }) {
@@ -87,26 +99,28 @@ class ForceDirectedGraph<T> {
     print('(FF1001)${json}....${decodedJson}>>>>${deserializeData3.runtimeType}');
 
     for (final nodeData in decodedJson['nodes']) {
-      Node<dynamic> node = nodeFromMap(nodeData, deserializeData3);
-      nodes.add(node as Node<T>);
+      Node node = nodeFromMap(nodeData, deserializeData3);
+      nodes.add(node);
       // print('(FF1003A)${node}....${node.data!.index},,,,${node.data.kind}----${node.data.doubleResult}');
       print(
-        '(FF1003B)${node}....${(node.data as NodeContents).index},,,,${node.position}',
+        '(FF1003B)${nodes.length}<<<<${node}....${(node.data as NodeContents).index},,,,${node.position}',
       );
     }
 
     //The argument type 'NodeDataDeserializer<T>?' can't be assigned to the parameter type 'NodeDataDeserializer<Node<dynamic>>?'.
     for (final edgeData in decodedJson['edges']) {
       print('(FF1004)${edgeData}>>>>${deserializeData3.runtimeType}');
-      Node<dynamic> nodeA = nodeDataFromMap(
+      Node nodeAFromMap = nodeFromMap(
         edgeData['a'],
-        deserializeData3 as  NodeDataDeserializer<Node<dynamic>>,
+        deserializeData3,
       );
-      Node<dynamic> nodeB = nodeDataFromMap(
+      Node nodeBFromMap = nodeFromMap(
         edgeData['b'],
-        deserializeData3 as NodeDataDeserializer<Node<dynamic>>,
+        deserializeData3,
       );
       EdgeExtra ee = EdgeExtra(isActive: edgeData['edgeExtra']['isActive']);
+      Node nodeA = getNodeFromIndexLocal(nodeAFromMap.data.index)!;
+      Node nodeB = getNodeFromIndexLocal(nodeBFromMap.data.index)!;
       Edge edge = Edge(nodeA, nodeB, ee);
       edges.add(edge);
       print('(FF1005)${nodeA}....${nodeB},,,,${edge}');
@@ -114,12 +128,12 @@ class ForceDirectedGraph<T> {
   }
 
   void _createNTree(
-    Node<T> node,
+    Node node,
     int remainingNodes,
     int remainingDepth,
     int n,
     Random random,
-    T Function() generator,
+    Function() generator,
   ) {
     if (remainingNodes <= 0 || remainingDepth == 0) {
       return;
@@ -154,7 +168,7 @@ class ForceDirectedGraph<T> {
     }
   }
 
-  void addNode(Node<T> node) {
+  void addNode(Node node) {
     if (nodes.contains(node)) {
       throw Exception('Node already exists');
     }
@@ -224,7 +238,8 @@ class ForceDirectedGraph<T> {
     return "\nnodes:\n$nodes,\nedges:\n$edges";
   }
 
-  String toJson({NodeDataSerializer<T>? serializeData}) {
+  String toJson({NodeDataSerializer? serializeData}) {
+    print('(FF2001)${serializeData}....${nodes},,,,${edges}');
     return jsonEncode({
       'nodes': nodes
           .map(
@@ -237,8 +252,18 @@ class ForceDirectedGraph<T> {
       'edges': edges
           .map(
             (e) => {
-              'a': serializeData == null ? e.a.data : serializeData(e.a.data),
-              'b': serializeData == null ? e.b.data : serializeData(e.b.data),
+              'a': /*serializeData == null ? e.a.data :*/ /*serializeData(e.a.data)*/
+              {
+                'data': serializeData == null ? e.a.data : serializeData(e.a.data),
+                'position': {'x': e.a.position.x, 'y': e.a.position.y},
+              },
+              'b': /*serializeData == null ? e.b.data : *//*serializeData(e.a.data)*/
+              {
+                'data': serializeData == null ? e.b.data : serializeData(e.b.data),
+                'position': {'x': e.b.position.x, 'y': e.b.position.y},
+              },
+
+             // 'b': serializeData == null ? e.b.data : serializeData(e.b.data),
               'edgeExtra': e.edgeExtra.toJson(),
             },
           )

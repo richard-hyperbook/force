@@ -5,12 +5,13 @@ import 'package:vector_math/vector_math.dart';
 import '../model/edge.dart';
 import '../model/graph.dart';
 import '../model/node.dart';
+import '../main.dart';
 
-class ForceDirectedGraphController<T> extends ChangeNotifier {
-  final ForceDirectedGraph<T> _graph;
+class ForceDirectedGraphController extends ChangeNotifier {
+  final ForceDirectedGraph _graph;
 
   /// Set graph.
-  set graph(ForceDirectedGraph<T> graph) {
+  set graph(ForceDirectedGraph graph) {
     _graph.nodes.clear();
     _graph.edges.clear();
     _graph.nodes.addAll(graph.nodes);
@@ -19,10 +20,10 @@ class ForceDirectedGraphController<T> extends ChangeNotifier {
   }
 
   /// Get graph.
-  ForceDirectedGraph<T> get graph => _graph;
+  ForceDirectedGraph get graph => _graph;
 
   ForceDirectedGraphController(
-      {ForceDirectedGraph<T>? graph,
+      {ForceDirectedGraph? graph,
       double minScale = 0.1,
       double maxScale = 2.0})
       : _graph = graph ?? ForceDirectedGraph(),
@@ -93,7 +94,7 @@ class ForceDirectedGraphController<T> extends ChangeNotifier {
   }
 
   /// Locate to the node with the given data.
-  void locateTo(T data) {
+  void locateTo(NodeContents  data) {
     final located = _graph.nodes
         .firstWhereOrNull((element) => element.data == data)
         ?.position;
@@ -104,7 +105,7 @@ class ForceDirectedGraphController<T> extends ChangeNotifier {
   }
 
   /// Add node. Returns the added node.
-  Node<T> addNode(T data) {
+  Node addNode(NodeContents  data) {
     final node = Node(data);
     _graph.addNode(node);
     notifyListeners();
@@ -112,13 +113,13 @@ class ForceDirectedGraphController<T> extends ChangeNotifier {
   }
 
   /// Add edge by node.
-  void addEdgeByNode(Node<T> a, Node<T> b, EdgeExtra edgeExtra) {
+  void addEdgeByNode(Node a, Node b, EdgeExtra edgeExtra) {
     _graph.addEdge(a.connect(b));
     notifyListeners();
   }
 
   /// Add edge by data. If the node is not found, add it.
-  void addEdgeByData(T a, T b, EdgeExtra? edgeExtra) {
+  void addEdgeByData(NodeContents a, NodeContents b, EdgeExtra? edgeExtra) {
     final nodeA = _graph.nodes
         .firstWhere((element) => element.data == a, orElse: () => addNode(a));
     final nodeB = _graph.nodes
@@ -127,7 +128,7 @@ class ForceDirectedGraphController<T> extends ChangeNotifier {
   }
 
   /// Delete node. If the node is not found, do nothing.
-  void deleteNode(Node<T> node) {
+  void deleteNode(Node node) {
     _graph.nodes.remove(node);
     _graph.edges
         .removeWhere((element) => element.a == node || element.b == node);
@@ -135,7 +136,7 @@ class ForceDirectedGraphController<T> extends ChangeNotifier {
   }
 
   /// Delete node by data. If the node is not found, do nothing.
-  void deleteNodeByData(T data) {
+  void deleteNodeByData(NodeContents  data) {
     final node =
         _graph.nodes.firstWhereOrNull((element) => element.data == data);
     if (node != null) {
@@ -150,7 +151,7 @@ class ForceDirectedGraphController<T> extends ChangeNotifier {
   }
 
   /// Delete edge by data. If the edge is not found, do nothing.
-  void deleteEdgeByData(T a, T b) {
+  void deleteEdgeByData(NodeContents  a, NodeContents  b) {
     final nodeA = _graph.nodes.firstWhereOrNull((element) => element.data == a);
     final nodeB = _graph.nodes.firstWhereOrNull((element) => element.data == b);
     if (nodeA != null && nodeB != null) {

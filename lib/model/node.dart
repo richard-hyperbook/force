@@ -1,4 +1,5 @@
 import 'package:vector_math/vector_math.dart';
+import '../main.dart';
 
 import 'edge.dart';
 
@@ -17,8 +18,8 @@ import 'edge.dart';
 ///
 /// Furthermore [Node] instances are referenced by [KDNode] instances to allow
 /// their information to be used in the [KDTree] implementation.
-class Node<T> {
-  final T data;
+class Node {
+  final NodeContents data;
   double mass = 1.0;
   Vector2 position;
   Vector2 _force = Vector2.zero();

@@ -9,22 +9,23 @@ import '../model/node.dart';
 import 'edge_widget.dart';
 import 'force_directed_graph_controller.dart';
 import 'node_widget.dart';
+import '../main.dart';
 
 /// A builder that builds a node.
 /// [context] is the build context.
 /// [data] is the data of the node.
-typedef NodeBuilder<T> = Widget Function(BuildContext context, T data);
+typedef NodeBuilder = Widget Function(BuildContext context, NodeContents  data);
 
 /// A builder that builds an edge.
 /// [context] is the build context.
 /// [a] is the data of the node at the start of the edge.
 /// [b] is the data of the node at the end of the edge.
 /// [distance] is the distance between the two nodes.
-typedef EdgeBuilder<T> = Widget Function(
-    BuildContext context, T a, T b, double distance);
+typedef EdgeBuilder = Widget Function(
+    BuildContext context, NodeContents a, NodeContents  b, double distance);
 
 /// A widget that displays a force-directed graph.
-class ForceDirectedGraphWidget<T> extends StatefulWidget {
+class ForceDirectedGraphWidget extends StatefulWidget {
   const ForceDirectedGraphWidget({
     super.key,
     required this.controller,
@@ -38,7 +39,7 @@ class ForceDirectedGraphWidget<T> extends StatefulWidget {
   }) : assert(cachePaintOffset >= 0);
 
   /// The controller of the graph.
-  final ForceDirectedGraphController<T> controller;
+  final ForceDirectedGraphController controller;
 
   /// Used to optimize drawing performance.
   /// When the center of the node is out of the screen by more than this offset,
@@ -49,28 +50,28 @@ class ForceDirectedGraphWidget<T> extends StatefulWidget {
   final bool edgeAlwaysUp;
 
   /// The builder of the nodes.
-  final NodeBuilder<T> nodesBuilder;
+  final NodeBuilder nodesBuilder;
 
   /// The builder of the edges.
-  final EdgeBuilder<T> edgesBuilder;
+  final EdgeBuilder edgesBuilder;
 
   /// Called when a node is start dragging.
-  final void Function(T data)? onDraggingStart;
+  final void Function(NodeContents data)? onDraggingStart;
 
   /// Called when a node is dragging.
-  final void Function(T data)? onDraggingUpdate;
+  final void Function(NodeContents data)? onDraggingUpdate;
 
   /// Called when a node is end dragging.
-  final void Function(T data)? onDraggingEnd;
+  final void Function(NodeContents  data)? onDraggingEnd;
 
   @override
-  State<ForceDirectedGraphWidget<T>> createState() =>
-      _ForceDirectedGraphState<T>();
+  State<ForceDirectedGraphWidget> createState() =>
+      _ForceDirectedGraphState();
 }
 
-class _ForceDirectedGraphState<T> extends State<ForceDirectedGraphWidget<T>>
+class _ForceDirectedGraphState extends State<ForceDirectedGraphWidget>
     with SingleTickerProviderStateMixin {
-  ForceDirectedGraphController<T> get _controller => widget.controller;
+  ForceDirectedGraphController get _controller => widget.controller;
   late Ticker _ticker;
   double _scale = 1.0;
   Rect paintBound = Rect.zero;
@@ -105,7 +106,7 @@ class _ForceDirectedGraphState<T> extends State<ForceDirectedGraphWidget<T>>
   }
 
   @override
-  void didUpdateWidget(covariant ForceDirectedGraphWidget<T> oldWidget) {
+  void didUpdateWidget(covariant ForceDirectedGraphWidget oldWidget) {
     if (widget.controller != oldWidget.controller) {
       oldWidget.controller.removeListener(_onControllerChange);
       widget.controller.addListener(_onControllerChange);
@@ -175,8 +176,10 @@ class _ForceDirectedGraphState<T> extends State<ForceDirectedGraphWidget<T>>
     });
 
     final edges = _controller.graph.edges.where((element) {
+      print('(FF3001)${element.a.data.index},,,,${element.b.data.index},,,,${element}....');
       final a = Offset(element.a.position.x, element.a.position.y);
       final b = Offset(element.b.position.x, element.b.position.y);
+      print('(FF3002)${a}...${b}');
       return _inRect(a, paintBound) ||
           _inRect(b, paintBound) ||
           _isLineIntersectsRect(a, b, paintBound);
@@ -466,9 +469,11 @@ class ForceDirectedGraphRenderObject extends RenderBox
               childOffset.dx + childCenter.dx, childOffset.dy + childCenter.dy)
           ..rotateZ(angle)
           ..translate(-childCenter.dx, -childCenter.dy);
+        print('(FF3010)${edge.a.data.index}....${edge.b.data.index},,,,${edgeCenter}====${angle}');
       } else {
         throw Exception('Unknown child'); // coverage:ignore-line
       }
+
       context.canvas.restore();
       child = parentData.nextSibling;
     }
