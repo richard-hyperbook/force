@@ -12,7 +12,7 @@ import 'package:appwrite/models.dart' as models;
 import 'dart:io';
 import 'dart:convert';
 
-const buildNumber = 11;
+const buildNumber = 12;
 const double arrowHeight = 7;
 const double arrowWidth = 7;
 const double lineWidth = 3;
@@ -67,16 +67,23 @@ class MyApp extends StatelessWidget {
   }
 }
 
-enum NodeKind { kindDouble, kindDateTime, kindString }
+enum NodeKind { kindError, kindDouble, kindDateTime, kindString }
+
+const NodeKind ke = NodeKind.kindError;
+const NodeKind kd = NodeKind.kindDouble;
+const NodeKind kt = NodeKind.kindDateTime;
+const NodeKind ks = NodeKind.kindString;
 
 NodeKind? getNodeKindFromString(String s) {
   switch (s) {
+    case 'kindError':
+      return ke;
     case 'kindDouble':
-      return NodeKind.kindDouble;
+      return kd;
     case 'kindDateTime':
-      return NodeKind.kindDateTime;
+      return kt;
     case 'kindString':
-      return NodeKind.kindString;
+      return ks;
     default:
       return null;
   }
@@ -84,11 +91,13 @@ NodeKind? getNodeKindFromString(String s) {
 
 String? getStringFromNodeKind(NodeKind? k) {
   switch (k) {
-    case NodeKind.kindDouble:
+    case ke:
+      return 'kindError';
+    case kd:
       return 'kindDouble';
-    case NodeKind.kindDateTime:
+    case kt:
       return 'kindDateTime';
-    case NodeKind.kindString:
+    case ks:
       return 'kindString';
     default:
       return null;
@@ -192,20 +201,21 @@ class NodeContents {
     );
   }
 }
+
 //The argument type 'NodeContents Function(Map<String, dynamic>)' can't be assigned to the parameter type 'NodeDataDeserializer<NodeContents>?'.
 NodeContents deserializeNodeContents(dynamic d) {
   print('(FF1005A)${d.runtimeType}');
-   //Map<String, dynamic> nd = d['data'];
+  //Map<String, dynamic> nd = d['data'];
   var dd = d as Map<String, dynamic>;
   var nd = dd['data'];
   print('(FF1005B)${d}....${dd}----${nd}----');
-  if(nd == null){
+  if (nd == null) {
     nd = dd;
   }
   print('(FF1005C)${nd['index']}++++${nd['kind']}');
   return NodeContents(
     index: nd['index'],
-    kind: getNodeKindFromString(nd['kind']) ?? NodeKind.kindDouble,
+    kind: getNodeKindFromString(nd['kind']) ?? kd,
     input: nd['input'],
     doubleResult: nd['doubleResult'],
     dateTimeResult: DateTime.tryParse(nd['dateTimeResult'] ?? ''),
@@ -214,7 +224,6 @@ NodeContents deserializeNodeContents(dynamic d) {
     isEndNode: nd['isEndNode'],
   );
 }
-
 
 late final ForceDirectedGraphController _controller;
 
@@ -231,13 +240,13 @@ void dumpGraph() {
   print('1');
   for (var node in _controller.graph.nodes) {
     print(
-     '(FFDN)${node.data.index}<<<<${node.data.input}££££${node.data.kind};;;;${node.data.doubleResult}::::${node.data.dateTimeResult}@@@@${node.data.stringResult}',
-     );
+      '(FFDN)${node.data.index}<<<<${node.data.input}££££${node.data.kind};;;;${node.data.doubleResult}::::${node.data.dateTimeResult}@@@@${node.data.stringResult}',
+    );
   }
   for (var edge in _controller.graph.edges) {
     print(
       '(FFDE)${edge.a.data.index}${edge.a.data.kind}....${edge.b.data.index}${edge.b.data.kind},,,,${edge.edgeExtra.isActive}',
-     );
+    );
     print(
       '(FFDF)${edge.a.position}||||${edge.a.mass}....${edge.b.position}!!!!${edge.b.mass},,,,${edge.distance}????${edge.angle}',
     );
@@ -254,29 +263,30 @@ int? getEdgeIntegerFromNodeIndexes({int? indexA, int? indexB}) {
   return null;
 }
 
-EdgeExtra? getEdgeExtra({int? indexA, int? indexB}) {
+EdgeExtra? getEdgeExtraFromNodeIndexes({int? indexA, int? indexB}) {
   int? i = getEdgeIntegerFromNodeIndexes(indexA: indexA, indexB: indexB);
   if (i == null) return null;
   return _controller.graph.edges[i].edgeExtra;
 }
 
-Node? getNodeFromIndex(int? index){
+Node? getNodeFromIndex(int? index) {
   print('(FF3020)${index}....${_controller.graph.nodes.length}');
-  for(int i = 0; i < _controller.graph.nodes.length; i++){
-    print('(FF3021)${index}....${_controller.graph.nodes[i].data.index},,,,${_controller.graph.nodes[i]}');
-    if(index == _controller.graph.nodes[i].data.index){
+  for (int i = 0; i < _controller.graph.nodes.length; i++) {
+    print(
+      '(FF3021)${index}....${_controller.graph.nodes[i].data.index},,,,${_controller.graph.nodes[i]}',
+    );
+    if (index == _controller.graph.nodes[i].data.index) {
       return _controller.graph.nodes[i];
     }
   }
   return null;
 }
 
-
 bool isEdgeActive({int? indexA, int? indexB}) {
   //1print(
   //1 '(FF760)${indexA}....${indexB},,,,${getEdgeExtra(indexA: indexA, indexB: indexB)}',
   //1 );
-  EdgeExtra? ee = getEdgeExtra(indexA: indexA, indexB: indexB);
+  EdgeExtra? ee = getEdgeExtraFromNodeIndexes(indexA: indexA, indexB: indexB);
   return ee!.isActive!;
 }
 
@@ -296,7 +306,7 @@ void addEdgeByData({
   //1print(
   //1 '(FF761)${nodeA.index}....${nodeB.index}....${getEdgeExtra(indexA: nodeA.index, indexB: nodeB.index)}',
   //1);
-  dumpGraph();
+  //dumpGraph();
 }
 
 void deleteEdgeByData({
@@ -351,11 +361,7 @@ class _MyHomePageState extends State<MyHomePage> {
             maxDepth: 20,
             n: 4,
             generator: () {
-              return NodeContents(
-                kind: NodeKind.kindDouble,
-                index: _indexIndex++,
-                input: '',
-              );
+              return NodeContents(kind: kd, index: _indexIndex++, input: '');
             },
           ),
         )..setOnScaleChange((scale) {
@@ -469,62 +475,74 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   dynamic processEdge({dynamic total, Edge? edge, isFirstEdge = false}) {
-    EdgeExtra? edgeExtra = getEdgeExtra(
+    EdgeExtra? edgeExtra = getEdgeExtraFromNodeIndexes(
       indexA: edge!.a.data.index,
       indexB: edge.b.data.index,
     );
     if (!edgeExtra!.isActive!) return total;
     dynamic result = total;
     const Map<NodeKind, NodeOperation> mapADouble = {
-      NodeKind.kindDouble: NodeOperation.addDouble,
-      NodeKind.kindDateTime: NodeOperation.addDayToDate,
-      NodeKind.kindString: NodeOperation.addDoubleToString,
+      kd: NodeOperation.addDouble,
+      kt: NodeOperation.addDayToDate,
+      ks: NodeOperation.addDoubleToString,
     };
     const Map<NodeKind, NodeOperation> mapADateTime = {
-      NodeKind.kindDouble: NodeOperation.addDouble,
-      NodeKind.kindDateTime: NodeOperation.addDayToDate,
-      NodeKind.kindString: NodeOperation.addDoubleToString,
+      kd: NodeOperation.addDayToDate,
+      kt: NodeOperation.addDayToDate,
+      ks: NodeOperation.addDoubleToString,
+    };
+    const Map<NodeKind, NodeOperation> mapAString = {
+      kd: NodeOperation.addDouble,
+      kt: NodeOperation.addDayToDate,
+      ks: NodeOperation.addDoubleToString,
     };
 
-    const Map<NodeKind, Map> aMap = {NodeKind.kindDouble: mapADouble};
-    NodeKind bKind = edge.b.data.kind!;
+    const Map<NodeKind, Map> aMap = {
+      kd: mapADouble,
+      kt: mapADateTime,
+      ks: mapAString,
+    };
     NodeKind aKind = edge.a.data.kind!;
+    NodeKind bKind = edge.b.data.kind!;
+
     //1print('(FF400)${edge},,,,${aKind}....${bKind}');
     NodeOperation op = aMap[aKind]![bKind]!;
+
+    print('(FG1${total}%%%%${aKind}....${bKind},,,,${op}');
     switch (op) {
       case (NodeOperation.addDouble):
-        double inputValue = 0.0;
-        if (isFirstEdge) {
-          inputValue = double.tryParse(edge.b.data.input ?? '') ?? 0;
-        }
-        result = (total ?? 0.0) + inputValue + (edge.a.data.doubleResult ?? 0);
+        result = 0.0;
+        print(
+          '(FF330A)${total}****${edge.a.data.doubleResult},,,,${result}....${edge.b.data.doubleResult}',
+        );
+        result = (total ?? 0.0) + (edge.a.data.doubleResult ?? 0.0);
         //setControllerResult(index: edge.b.data.index, value: result);
-        //1print(
-        //1  '(FF330A)${edge.b.data.index},,,,${result}....${edge.b.data.doubleResult}',
-        //1);
+        print('(FF330Z)${result}');
         break;
       case (NodeOperation.addDayToDate):
-        DateTime? inputValue;
-        if (isFirstEdge) {
-          if ((edge.b.data.input == null) || (edge.b.data.input == '')) {
-            inputValue = DateTime.now();
-          } else {
-            inputValue = stringToDateTime(edge.b.data.input!);
-          }
-          result = inputValue!.add(
+        result = DateTime.now();
+        if ((total is DateTime) && (edge.a.data.kind == kd)) {
+          result = total.add(
             Duration(days: ((edge.a.data.doubleResult!.floor()) ?? 0.0) as int),
           );
         } else {
-          result = result!.add(
-            Duration(days: ((edge.a.data.doubleResult!.floor()) ?? 0.0) as int),
-          );
+          if ((total is double) && (edge.a.data.kind == kt)) {
+            setControllerKind(index: edge.b.data.index, kind: kt);
+            result = edge.a.data.dateTimeResult!.add(
+              Duration(days: ((total.floor()) ?? 0.0) as int),
+            );
+          } else {
+            result = null;
+            setControllerKind(index: edge.b.data.index, kind: ke);
+          }
         }
         //setControllerResult(index: edge.b.data.index, value: result);
-        //1  '(FF330A)${edge.b.data.index},,,,${result}....${edge.b.data.doubleResult}',
-        //1 );
+        print( '(FG2)${edge.b.data.index},,,,${total}....${edge.a.data.kind}',
+        );
         break;
       case (NodeOperation.addDoubleToString):
-        edge.b.data.stringResult = edge.b.data.input! + edge.a.data.stringResult!;
+        edge.b.data.stringResult =
+            edge.b.data.input! + edge.a.data.stringResult!;
         break;
       case (NodeOperation.latestDate):
         //2 edge.b.data.dateTimeResult =  edge.a.data.result;
@@ -533,27 +551,27 @@ class _MyHomePageState extends State<MyHomePage> {
         //2 edge.b.data!.result = null;
         break;
     }
-    //1print(
-    //1  '(FF320)${op}....${edge.b.data.input},,,,${edge.a.data.doubleResult}++++${edge.b.data.doubleResult}????${result}',
-    //1 );
+    print(
+      '(FF320)${op}....${edge.b.data.input},,,,${edge.a.data.doubleResult}++++${edge.b.data.doubleResult}????${result}',
+    );
     return result;
   }
 
   String getResult(NodeContents nodeContents) {
-    dynamic total;
-    /*switch(nodeContents.kind){
-      case(NodeKind.kindDouble):
-        total = double.tryParse(nodeContents.input!)?? 0.0; break;
-      case(NodeKind.kindDateTime):
-        total = double.tryParse(nodeContents.input!)?? 0.0; break;
-      case(NodeKind.kindString):
-        total = nodeContents.input!; break;
-      case(null):
-        total = null; break;
-    }*/
+    if (nodeContents.kind == ke) {
+      return 'ERROR';
+    }
+
+    DateTime? totalDateTime = stringToDateTime(nodeContents.input ?? '');
+    double? totalDouble = double.tryParse(nodeContents.input ?? '');
+    String? totalString = nodeContents.input;
+    dynamic total = totalString;
+    if (total == '') total = null;
+    total = totalDouble ?? total;
+    total = totalDateTime ?? total;
     bool edgeFound = false;
     bool isFirstEdge = true;
-    dumpGraph();
+    //dumpGraph();
     for (var edge in _controller.graph.edges) {
       //1print(
       //1  '(FF5)${nodeContents.index}----${nodeContents.kind}++++${edge.a.data.index}....${edge.a.data.kind}>>>>${edge.b.data.index},,,,${edge.b.data.kind}',
@@ -578,11 +596,13 @@ class _MyHomePageState extends State<MyHomePage> {
       total = double.tryParse(nodeContents.input ?? '') ?? 0.0;
     }
     switch (nodeContents.kind) {
-      case (NodeKind.kindDouble):
+      case (ke):
+        return 'ERROR 1';
+      case (kd):
         return total.toString();
-      case (NodeKind.kindDateTime):
+      case (kt):
         return dateToString(total);
-      case (NodeKind.kindString):
+      case (ks):
         return total;
       case (null):
         return '!!!';
@@ -618,17 +638,14 @@ class _MyHomePageState extends State<MyHomePage> {
     return Colors.white;
   }
 
-  Future<void> selectDate({int? index}) async {
+  Future<DateTime?> selectDate() async {
     final DateTime? pickedDate = await showDatePicker(
       context: context,
       initialDate: DateTime.now(),
       firstDate: DateTime(2020),
       lastDate: DateTime(2030),
     );
-
-    setState(() {
-      setControllerResult(index: index, value: pickedDate);
-    });
+    return pickedDate;
   }
 
   void onNodeTap(NodeContents data) {
@@ -656,8 +673,32 @@ class _MyHomePageState extends State<MyHomePage> {
                   String value = textEditingController!.text;
                   // double? doubleValue = double.tryParse(value);
                   //1print('(FF11)${value}++++${data.index}');
+                  double? doubleValue = double.tryParse(value);
                   setState(() {
+                    if (doubleValue == null) {
+                      setControllerKind(index: data.index, kind: ks);
+                    } else {
+                      setControllerKind(index: data.index, kind: kd);
+                    }
                     setControllerInput(index: data.index, value: value);
+                  });
+                  Navigator.of(context).pop();
+                },
+              ),
+              ElevatedButton(
+                child: const Text('Enter date'),
+                onPressed: () async {
+                  setControllerKind(index: data.index, kind: kt);
+                  DateTime? d = await selectDate();
+                  setState(() {
+                    if (d == null) {
+                      setControllerInput(index: data.index, value: null);
+                    } else {
+                      setControllerInput(
+                        index: data.index,
+                        value: dateToString(d),
+                      );
+                    }
                   });
                   Navigator.of(context).pop();
                 },
@@ -665,7 +706,7 @@ class _MyHomePageState extends State<MyHomePage> {
               Row(
                 children: [
                   ElevatedButton(
-                    child: const Text('Add number'),
+                    child: const Text('Add node'),
                     onPressed: () {
                       //1print('(FF13A)');
 
@@ -673,7 +714,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       addEdgeByData(
                         nodeA: data,
                         nodeB: NodeContents(
-                          kind: NodeKind.kindDouble,
+                          kind: kd,
                           index: _indexIndex,
                           input: '',
                         ),
@@ -684,21 +725,23 @@ class _MyHomePageState extends State<MyHomePage> {
                       Navigator.of(context).pop();
                     },
                   ),
-                  ElevatedButton(
+                  /* ElevatedButton(
                     child: const Text('Add date'),
                     onPressed: () async {
                       //1print('(FF13B)');
 
-                      /*_controller.*/
+                      */
+                  /*_controller.*/
+                  /*
                       addEdgeByData(
                         nodeA: data,
                         nodeB: NodeContents(
-                          kind: NodeKind.kindDateTime,
+                          kind: kt,
                           index: _indexIndex,
-                          input: dateToString(DateTime.now()),
+                          input: null,
                         ),
                       );
-                      await selectDate(index: _indexIndex);
+                      //await selectDate(index: _indexIndex);
                       _indexIndex++;
                       _nodes.clear();
                       _edges.clear();
@@ -710,11 +753,13 @@ class _MyHomePageState extends State<MyHomePage> {
                     onPressed: () {
                       //1print('(FF13C)');
 
-                      /*_controller.*/
+                      */
+                  /*_controller.*/
+                  /*
                       addEdgeByData(
                         nodeA: data,
                         nodeB: NodeContents(
-                          kind: NodeKind.kindString,
+                          kind: ks,
                           index: _indexIndex,
                           input: '',
                         ),
@@ -724,7 +769,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       _edges.clear();
                       Navigator.of(context).pop();
                     },
-                  ),
+                  ),*/
                 ],
               ),
 
@@ -859,7 +904,7 @@ class _MyHomePageState extends State<MyHomePage> {
                         Navigator.pop(context);
                       } else {
                         //1print('(FF441A)${replicationCount}');
-                        dumpGraph();
+                        //dumpGraph();
                         if (replicationCount > 9) {
                           replicationCount = 10;
                         }
@@ -870,13 +915,13 @@ class _MyHomePageState extends State<MyHomePage> {
                             nodeB: edgeOutputNodeContentsB!,
                           );
                           //1print('(FF441B)${_indexIndex}');
-                          dumpGraph();
+                          //dumpGraph();
                           // _controller.addNode(
                           //   NodeContents(index: _indexIndex, kind: data.kind),
                           // );
                           // _indexIndex++;
                           //1print('(FF441C)${_indexIndex}');
-                          dumpGraph();
+                          //dumpGraph();
                           NodeContents nextNodeContents = NodeContents(
                             index: _indexIndex,
                             kind: currentNodeContents.kind,
@@ -891,21 +936,21 @@ class _MyHomePageState extends State<MyHomePage> {
                             nextNodeContents.index!,
                           );
                           //1print('(FF441D)${_indexIndex}');
-                          dumpGraph();
+                          //Graph();
                           /*_controller.*/
                           addEdgeByData(
                             nodeA: edgeCommonNodeContentsA!,
                             nodeB: nextNode!,
                           );
                           //1print('(FF441E)${nextNode.index}');
-                          dumpGraph();
+                          //dumpGraph();
                           /*_controller.*/
                           addEdgeByData(
                             nodeA: nextNode,
                             nodeB: edgeOutputNodeContentsB!,
                           );
                           //1print('(FF441F)${_indexIndex}');
-                          dumpGraph();
+                          //dumpGraph();
 
                           for (
                             int i = 0;
@@ -917,7 +962,7 @@ class _MyHomePageState extends State<MyHomePage> {
                           //1print(
                           //1  '(FF440)${replicationCount}>>>>${j}++++${edgeInputNodeContentsA!.index}....${edgeCommonNodeContentsA!.index},,,,${edgeOutputNodeContentsB!.index}',
                           //1);
-                          dumpGraph();
+                          //dumpGraph();
                           edgeInputNodeContentsA = currentNodeContents;
                           edgeInputNodeContentsB = nextNodeContents;
                           edgeOutputNodeContentsA = nextNodeContents;
@@ -988,11 +1033,13 @@ class _MyHomePageState extends State<MyHomePage> {
     //1print('(FF430)${data.index}');
     String inputString = data.input ?? '';
     switch (data.kind) {
-      case (NodeKind.kindDouble):
+      case (ke):
+        return Text('ERROR 2}');
+      case (kd):
         return Text('${inputString}>${getResult(data)}');
-      case (NodeKind.kindDateTime):
+      case (kt):
         return Text('${inputString}>${getResult(data)}');
-      case (NodeKind.kindString):
+      case (ks):
         return Text('${inputString}>${getResult(data)}');
       case (null):
         return Text('ERROR');
@@ -1039,14 +1086,17 @@ class _MyHomePageState extends State<MyHomePage> {
                   // } else {
                   //   color = Colors.red;
                   // }
-                  switch (data!.kind) {
-                    case NodeKind.kindDouble:
+                  switch (data.kind) {
+                    case ke:
+                      color = Colors.black;
+                      break;
+                    case kd:
                       color = Colors.purple;
                       break;
-                    case NodeKind.kindDateTime:
+                    case kt:
                       color = Colors.red;
                       break;
-                    case NodeKind.kindString:
+                    case ks:
                       color = Colors.green;
                       break;
                     case null:
@@ -1063,7 +1113,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     },
 
                     child: Container(
-                      width: (data.kind == NodeKind.kindDateTime) ? 250 : 110,
+                      width: (data.kind == kt) ? 250 : 110,
                       height: 24,
                       decoration: BoxDecoration(
                         color: setBoxColor(data),
@@ -1075,9 +1125,7 @@ class _MyHomePageState extends State<MyHomePage> {
                           ? Row(
                               children: [
                                 Container(
-                                  width: (data.kind == NodeKind.kindDateTime)
-                                      ? 200
-                                      : 100,
+                                  width: (data.kind == kt) ? 200 : 100,
                                   height: 22,
                                   //     color: Colors.amber,
                                   child: drawNode(data),
@@ -1103,7 +1151,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   //1print(
                   //1 '(FF762)${a.index}....${b.index},,,,${isEdgeActive(indexA: a.index, indexB: b.index)}',
                   //1);
-                  dumpGraph();
+                  //dumpGraph();
                   if (!isEdgeActive(indexA: a.index, indexB: b.index)) {
                     color = Colors.grey;
                   }
@@ -1212,7 +1260,7 @@ class _MyHomePageState extends State<MyHomePage> {
                               //1print(
                               //1  '(FF76)${a.index}....${b.index},,,,${isEdgeActive(indexA: a.index, indexB: b.index)}',
                               //1);
-                              dumpGraph();
+                              //dumpGraph();
                               Navigator.of(context).pop();
                             },
                           ),
@@ -1273,10 +1321,7 @@ class _MyHomePageState extends State<MyHomePage> {
       children: [
         ElevatedButton(
           onPressed: () {
-            NodeContents n = NodeContents(
-              index: _indexIndex,
-              kind: NodeKind.kindDouble,
-            );
+            NodeContents n = NodeContents(index: _indexIndex, kind: kd);
             _controller.addNode(n);
             _indexIndex++;
           },
@@ -1403,7 +1448,7 @@ class _MyHomePageState extends State<MyHomePage> {
               queries: [Query.limit(100)],
             );
             models.Document? chosenDocument;
-            if(docs.total > 0) {
+            if (docs.total > 0) {
               chosenDocument = docs.documents[0];
             }
             showDialog<double>(
@@ -1414,55 +1459,61 @@ class _MyHomePageState extends State<MyHomePage> {
                     return AlertDialog(
                       title: const Text('Load spreadsheet'),
 
-                      content:
-                      (chosenDocument == null) ?
-                          Text('No files') :
-                      Column(
-                        children: [
-                          DropdownButton<models.Document>(
-                            //  key: ValueKey(widget),
-                            value: chosenDocument,
-                            hint: const Text('Please select filename'),
-                            items: docs!.documents
-                                .map<DropdownMenuItem<models.Document>>((
-                                  models.Document item,
-                                ) {
-                                  return DropdownMenuItem<models.Document>(
-                                    value: item,
-                                    child: Text(item.data['filename']),
-                                  );
-                                })
-                                .toList(),
-                            elevation: 2,
-                            onChanged: (value) {
-                              setState(() {
-                                chosenDocument = value!;
-                              });
-                              print('(FF352)${value!.data['filename']}');
-                            },
-                            isExpanded: true,
-                            focusColor: Colors.transparent,
-                          ),
+                      content: (chosenDocument == null)
+                          ? Text('No files')
+                          : Column(
+                              children: [
+                                DropdownButton<models.Document>(
+                                  //  key: ValueKey(widget),
+                                  value: chosenDocument,
+                                  hint: const Text('Please select filename'),
+                                  items: docs!.documents
+                                      .map<DropdownMenuItem<models.Document>>((
+                                        models.Document item,
+                                      ) {
+                                        return DropdownMenuItem<
+                                          models.Document
+                                        >(
+                                          value: item,
+                                          child: Text(item.data['filename']),
+                                        );
+                                      })
+                                      .toList(),
+                                  elevation: 2,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      chosenDocument = value!;
+                                    });
+                                    print('(FF352)${value!.data['filename']}');
+                                  },
+                                  isExpanded: true,
+                                  focusColor: Colors.transparent,
+                                ),
 
-                          ElevatedButton(
-                            onPressed: () {
-                              String chosenFilename =
-                                  chosenDocument!.data['filename'];
-                              _controller.graph.nodes.clear();
-                              _controller.graph.edges.clear();
-                              _indexIndex = 0;
-                              print('(FF350)${chosenDocument!.data['json']}');
-                              setState(() {
-                                _controller.graph = ForceDirectedGraph.fromJson(
-                                  chosenDocument!.data['json'],
-                                  deserializeData3: deserializeNodeContents,//as NodeDataDeserializer<NodeContents>,
-                                );
-                              });
-                            },
-                            child: Text('Confirm'),
-                          ),
-                        ],
-                      ),
+                                ElevatedButton(
+                                  onPressed: () {
+                                    String chosenFilename =
+                                        chosenDocument!.data['filename'];
+                                    _controller.graph.nodes.clear();
+                                    _controller.graph.edges.clear();
+                                    _indexIndex = 0;
+                                    print(
+                                      '(FF350)${chosenDocument!.data['json']}',
+                                    );
+                                    setState(() {
+                                      _controller
+                                          .graph = ForceDirectedGraph.fromJson(
+                                        chosenDocument!.data['json'],
+                                        deserializeData3:
+                                            deserializeNodeContents, //as NodeDataDeserializer<NodeContents>,
+                                      );
+                                      Navigator.of(context).pop();
+                                    });
+                                  },
+                                  child: Text('Confirm'),
+                                ),
+                              ],
+                            ),
                     );
                   },
                 );
@@ -1482,7 +1533,7 @@ class _MyHomePageState extends State<MyHomePage> {
               queries: [Query.limit(100)],
             );
             models.Document? chosenDocument;
-            if(docs.total > 0) {
+            if (docs.total > 0) {
               chosenDocument = docs.documents[0];
             }
             showDialog<double>(
@@ -1492,56 +1543,59 @@ class _MyHomePageState extends State<MyHomePage> {
                   builder: (context, setState) {
                     return AlertDialog(
                       title: const Text('Delete spreadsheet'),
-                      content: (chosenDocument == null) ?
-                      Text('No files') :
-                      Column(
-                        children: [
-                          DropdownButton<models.Document>(
-                            //  key: ValueKey(widget),
-                            value: chosenDocument,
-                            hint: const Text('Please select filename'),
-                            items: docs!.documents
-                                .map<DropdownMenuItem<models.Document>>((
-                                models.Document item,
-                                ) {
-                              return DropdownMenuItem<models.Document>(
-                                value: item,
-                                child: Text(item.data['filename']),
-                              );
-                            })
-                                .toList(),
-                            elevation: 2,
-                            onChanged: (value) {
-                              setState(() {
-                                chosenDocument = value!;
-                              });
-                              print('(FF352)${value!.data['filename']}');
-                            },
-                            isExpanded: true,
-                            focusColor: Colors.transparent,
-                          ),
+                      content: (chosenDocument == null)
+                          ? Text('No files')
+                          : Column(
+                              children: [
+                                DropdownButton<models.Document>(
+                                  //  key: ValueKey(widget),
+                                  value: chosenDocument,
+                                  hint: const Text('Please select filename'),
+                                  items: docs!.documents
+                                      .map<DropdownMenuItem<models.Document>>((
+                                        models.Document item,
+                                      ) {
+                                        return DropdownMenuItem<
+                                          models.Document
+                                        >(
+                                          value: item,
+                                          child: Text(item.data['filename']),
+                                        );
+                                      })
+                                      .toList(),
+                                  elevation: 2,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      chosenDocument = value!;
+                                    });
+                                    print('(FF352)${value!.data['filename']}');
+                                  },
+                                  isExpanded: true,
+                                  focusColor: Colors.transparent,
+                                ),
 
-                          ElevatedButton(
-                            onPressed: () async {
-                              String chosenFilename =
-                              chosenDocument!.data['filename'];
-                              _controller.graph.nodes.clear();
-                              _controller.graph.edges.clear();
-                              print('(FF360)${chosenDocument!.data['json']}');
+                                ElevatedButton(
+                                  onPressed: () async {
+                                    String chosenFilename =
+                                        chosenDocument!.data['filename'];
+                                    _controller.graph.nodes.clear();
+                                    _controller.graph.edges.clear();
+                                    print(
+                                      '(FF360)${chosenDocument!.data['json']}',
+                                    );
 
-                              await databases!.deleteDocument(
-                                  databaseId: kDatabaseID,
-                                  collectionId: kSpreadsheets,
-                                  documentId: chosenDocument!.data['\$id'],
-                              );
-                              // setState((){});
-                              Navigator.of(context).pop();
-
-                            },
-                            child: Text('Confirm'),
-                          ),
-                        ],
-                      ),
+                                    await databases!.deleteDocument(
+                                      databaseId: kDatabaseID,
+                                      collectionId: kSpreadsheets,
+                                      documentId: chosenDocument!.data['\$id'],
+                                    );
+                                    // setState((){});
+                                    Navigator.of(context).pop();
+                                  },
+                                  child: Text('Confirm'),
+                                ),
+                              ],
+                            ),
                     );
                   },
                 );
@@ -1551,7 +1605,6 @@ class _MyHomePageState extends State<MyHomePage> {
 
           child: Text('delete'),
         ),
-
 
         ElevatedButton(
           onPressed: () {
