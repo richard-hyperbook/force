@@ -114,7 +114,7 @@ class ForceDirectedGraphController extends ChangeNotifier {
 
   /// Add edge by node.
   void addEdgeByNode(Node a, Node b, EdgeExtra edgeExtra) {
-    _graph.addEdge(a.connect(b));
+    _graph.addEdge(a.connect(b, edgeExtra));
     notifyListeners();
   }
 

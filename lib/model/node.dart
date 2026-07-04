@@ -94,8 +94,8 @@ class Node {
 
   /// Connects the current [Node] with the [other] [Node] by creating
   /// (and returning) an [Edge]
-  Edge connect(Node other) {
-    return Edge(this, other, EdgeExtra(isActive: true));//TODO handle edgeextra
+  Edge connect(Node other, EdgeExtra edgeExtra) {
+    return Edge(this, other, edgeExtra);//TODO handle edgeextra
   }
 
   /// Returns a string representation of the [Node] instance, including the
