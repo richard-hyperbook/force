@@ -429,11 +429,12 @@ class ForceDirectedGraphRenderObject extends RenderBox
       final childCenter = child.size.center(Offset.zero);
 
       if (parentData.node != null) {
+
         // paint node
         final node = parentData.node!;
         final moveOffset = Offset(node.position.x, -node.position.y);
         final finalOffset = -childCenter + moveOffset;
-
+        print('(FH1)${node.data.index}....${moveOffset},,,,${finalOffset}++++${center.dx}****${center.dy}');
         context.paintChild(child, finalOffset);
 
         final childOffset = moveOffset + center - offset - childCenter;
@@ -450,7 +451,7 @@ class ForceDirectedGraphRenderObject extends RenderBox
         final edgeCenter = (edge.a.position + edge.b.position) / 2;
         final moveOffset = Offset(edgeCenter.x, -edgeCenter.y);
         final finalOffset = -childCenter + moveOffset;
-
+        print('(FH2)${edge.a.data.index}>>>>${edge.b.data.index}....${moveOffset},,,,${finalOffset}++++${center.dx}****${center.dy}');
         final angle = edgeAlwaysUp ? edge.angle : edge.rawAngle;
         context.canvas
           ..translate(moveOffset.dx, moveOffset.dy)

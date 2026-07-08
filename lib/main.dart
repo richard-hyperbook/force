@@ -12,7 +12,7 @@ import 'package:appwrite/models.dart' as models;
 import 'dart:io';
 import 'dart:convert';
 
-const buildNumber = 13;
+const buildNumber = 14;
 const double arrowHeight = 7;
 const double arrowWidth = 7;
 const double lineWidth = 3;
@@ -46,6 +46,9 @@ Account? account;
 Storage? storage;
 Databases? databases;
 TextEditingController filenameTextEditingController = TextEditingController(
+  text: '',
+);
+TextEditingController dataEntryTextEditingController = TextEditingController(
   text: '',
 );
 
@@ -125,6 +128,7 @@ class NodeContents {
   bool? isStartNode;
   bool? isEndNode;
   bool? isHighlight;
+  bool? isDataEntry;
 
   //TextEditingController? textEditingController = TextEditingController(
   // text: '',
@@ -139,6 +143,7 @@ class NodeContents {
     this.isStartNode,
     this.isEndNode,
     this.isHighlight,
+    required this.isDataEntry,
   });
 
   Map<String, dynamic> toJson() {
@@ -152,6 +157,7 @@ class NodeContents {
       'isStartNode': isStartNode,
       'isEndNode': isEndNode,
       'isHighlight': isHighlight,
+      'isDataEntry': isDataEntry,
     };
     //1print('(FF750)${this.index}....${this.kind},,,,${m}');
     return m;
@@ -181,6 +187,7 @@ class NodeContents {
     isStartNode: json["isStartNode"] as bool,
     isEndNode: json["isEndNode"] as bool,
     isHighlight: json['isHighlight'] as bool,
+    isDataEntry: json['isDataEntry'] as bool,
   );
 
   /*LinkItem.fromJson(Map<String, dynamic> json)
@@ -205,6 +212,7 @@ class NodeContents {
         json['dateTimeResult'] as String,
       ), //json['dateTimeResult'] as DateTime,
       stringResult: json['stringResul'] as String,
+      isDataEntry: json['isDataEntry'] as bool,
     );
   }
 }
@@ -230,6 +238,7 @@ NodeContents deserializeNodeContents(dynamic d) {
     isStartNode: nd['isStartNode'],
     isEndNode: nd['isEndNode'],
     isHighlight: nd['isHighlight'],
+    isDataEntry: nd['isDataEntry'],
   );
 }
 
@@ -248,7 +257,7 @@ void dumpGraph() {
   print('1');
   for (var node in _controller.graph.nodes) {
     print(
-      '(FFDN)${node.data.index}<<<<${node.data.input}££££${node.data.kind};;;;${node.data.doubleResult}::::${node.data.dateTimeResult}@@@@${node.data.stringResult}',
+      '(FFDN)--x>${node.position.x}--y>${node.position.y}>>>>${node.data.index}<<<<${node.data.input}££££${node.data.kind};;;;${node.data.doubleResult}::::${node.data.dateTimeResult}@@@@${node.data.stringResult}',
     );
   }
   for (var edge in _controller.graph.edges) {
@@ -369,7 +378,12 @@ class _MyHomePageState extends State<MyHomePage> {
             maxDepth: 20,
             n: 4,
             generator: () {
-              return NodeContents(kind: kd, index: _indexIndex++, input: '');
+              return NodeContents(
+                kind: kd,
+                index: _indexIndex++,
+                input: '',
+                isDataEntry: false,
+              );
             },
           ),
         )..setOnScaleChange((scale) {
@@ -447,6 +461,17 @@ class _MyHomePageState extends State<MyHomePage> {
     for (int i = 0; i < _controller.graph.nodes.length; i++) {
       if (_controller.graph.nodes[i].data.index == index) {
         _controller.graph.nodes[i].data.isEndNode = value;
+        break;
+      }
+    }
+  }
+
+  void setControllerIsDataEntry({int? index, bool? value}) {
+    print('(FG7)${index}....${value}');
+    for (int i = 0; i < _controller.graph.nodes.length; i++) {
+      if (_controller.graph.nodes[i].data.index == index) {
+        _controller.graph.nodes[i].data.isDataEntry = value;
+        print('(FG8)${index}....${value}');
         break;
       }
     }
@@ -648,7 +673,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   String dateToString(DateTime? dateTime) {
     if (dateTime == null) {
-      return '???';
+      return '';
     }
     return DateFormat('dd-MM-yyyy').format(dateTime);
   }
@@ -688,7 +713,83 @@ class _MyHomePageState extends State<MyHomePage> {
     return pickedDate;
   }
 
-  void onNodeTap(NodeContents data) {
+  void showDataEntryDialog(NodeContents data) {
+    String passiveEdgeResult = '';
+    for (int i = 0; i < _controller.graph.edges.length; i++) {
+      print('(FH7)${_controller.graph.edges[i].a.data.index}....${_controller.graph.edges[i].b.data.index}');
+      if ((_controller.graph.edges[i].b.data.index == data.index) &&
+          (!_controller.graph.edges[i].edgeExtra.isActive!)) {
+        print('(FH8)${_controller.graph.edges[i].a.data.index}....${_controller.graph.edges[i].a!.data.kind}');
+        switch (_controller.graph.edges[i].a!.data.kind) {
+          case ke:
+            passiveEdgeResult = '5ERROR';
+            break;
+          case kd:
+            passiveEdgeResult =
+                (_controller.graph.edges[i].a!.data.doubleResult ?? 0)
+                    .toString();
+            break;
+          case kt:
+            passiveEdgeResult = dateToString(
+              _controller.graph.edges[i].a!.data.dateTimeResult,
+            );
+            break;
+          case ks:
+            passiveEdgeResult =
+                _controller.graph.edges[i].a!.data.stringResult ?? '';
+            break;
+          case null:
+            passiveEdgeResult = '';
+            break;
+        }
+        break;
+      }
+    }
+    showDialog<double>(
+      context: context,
+      builder: (BuildContext context) {
+        TextEditingController dataEntryController = TextEditingController(
+          text: data.input,
+        );
+        return AlertDialog(
+          title: Text(passiveEdgeResult),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              TextField(controller: dataEntryController, onChanged: (value) {}),
+              ElevatedButton(
+                child: const Text('Enter'),
+                onPressed: () {
+                  String value = dataEntryController!.text;
+                  // double? doubleValue = double.tryParse(value);
+                  print('(FH5)${value}++++${data.index}');
+                  double? doubleValue = double.tryParse(value);
+                  setState(() {
+                    if (doubleValue == null) {
+                      setControllerKind(index: data.index, kind: ks);
+                    } else {
+                      setControllerKind(index: data.index, kind: kd);
+                      double? doubleValue = double.tryParse(value);
+                      setControllerInput(index: data.index, value: value);
+                      setControllerResult(
+                        index: data.index,
+                        value: doubleValue ?? 'Y',
+                      );
+                    }
+                    setControllerInput(index: data.index, value: value);
+                  });
+                  Navigator.of(context).pop();
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void showStandardDialog(NodeContents data) {
+    print('(FH7)');
     showDialog<double>(
       context: context,
       builder: (BuildContext context) {
@@ -707,41 +808,57 @@ class _MyHomePageState extends State<MyHomePage> {
                 },
               ),
 
-              ElevatedButton(
-                child: const Text('Enter'),
-                onPressed: () {
-                  String value = textEditingController!.text;
-                  // double? doubleValue = double.tryParse(value);
-                  //1print('(FF11)${value}++++${data.index}');
-                  double? doubleValue = double.tryParse(value);
-                  setState(() {
-                    if (doubleValue == null) {
-                      setControllerKind(index: data.index, kind: ks);
-                    } else {
-                      setControllerKind(index: data.index, kind: kd);
-                    }
-                    setControllerInput(index: data.index, value: value);
-                  });
-                  Navigator.of(context).pop();
-                },
-              ),
-              ElevatedButton(
-                child: const Text('Enter date'),
-                onPressed: () async {
-                  setControllerKind(index: data.index, kind: kt);
-                  DateTime? d = await selectDate();
-                  setState(() {
-                    if (d == null) {
-                      setControllerInput(index: data.index, value: null);
-                    } else {
-                      setControllerInput(
-                        index: data.index,
-                        value: dateToString(d),
-                      );
-                    }
-                  });
-                  Navigator.of(context).pop();
-                },
+              Row(
+                children: [
+                  ElevatedButton(
+                    child: const Text('Enter'),
+                    onPressed: () {
+                      String value = textEditingController!.text;
+                      // double? doubleValue = double.tryParse(value);
+                      //1print('(FF11)${value}++++${data.index}');
+                      double? doubleValue = double.tryParse(value);
+                      setState(() {
+                        if (doubleValue == null) {
+                          setControllerKind(index: data.index, kind: ks);
+                        } else {
+                          setControllerKind(index: data.index, kind: kd);
+                        }
+                        setControllerInput(index: data.index, value: value);
+                      });
+                      Navigator.of(context).pop();
+                    },
+                  ),
+                  ElevatedButton(
+                    child: const Text('Set data entry'),
+                    onPressed: () async {
+                      setState(() {
+                        setControllerIsDataEntry(
+                          index: data.index,
+                          value: true,
+                        );
+                      });
+                      Navigator.of(context).pop();
+                    },
+                  ),
+                  ElevatedButton(
+                    child: const Text('Enter date'),
+                    onPressed: () async {
+                      setControllerKind(index: data.index, kind: kt);
+                      DateTime? d = await selectDate();
+                      setState(() {
+                        if (d == null) {
+                          setControllerInput(index: data.index, value: null);
+                        } else {
+                          setControllerInput(
+                            index: data.index,
+                            value: dateToString(d),
+                          );
+                        }
+                      });
+                      Navigator.of(context).pop();
+                    },
+                  ),
+                ],
               ),
               Row(
                 children: [
@@ -757,6 +874,7 @@ class _MyHomePageState extends State<MyHomePage> {
                           kind: kd,
                           index: _indexIndex,
                           input: '',
+                          isDataEntry: false,
                         ),
                       );
                       _indexIndex++;
@@ -765,54 +883,8 @@ class _MyHomePageState extends State<MyHomePage> {
                       Navigator.of(context).pop();
                     },
                   ),
-                  /* ElevatedButton(
-                    child: const Text('Add date'),
-                    onPressed: () async {
-                      //1print('(FF13B)');
-
-                      */
-                  /*_controller.*/
-                  /*
-                      addEdgeByData(
-                        nodeA: data,
-                        nodeB: NodeContents(
-                          kind: kt,
-                          index: _indexIndex,
-                          input: null,
-                        ),
-                      );
-                      //await selectDate(index: _indexIndex);
-                      _indexIndex++;
-                      _nodes.clear();
-                      _edges.clear();
-                      Navigator.of(context).pop();
-                    },
-                  ),
-                  ElevatedButton(
-                    child: const Text('Add text'),
-                    onPressed: () {
-                      //1print('(FF13C)');
-
-                      */
-                  /*_controller.*/
-                  /*
-                      addEdgeByData(
-                        nodeA: data,
-                        nodeB: NodeContents(
-                          kind: ks,
-                          index: _indexIndex,
-                          input: '',
-                        ),
-                      );
-                      _indexIndex++;
-                      _nodes.clear();
-                      _edges.clear();
-                      Navigator.of(context).pop();
-                    },
-                  ),*/
                 ],
               ),
-
               Row(
                 children: [
                   ElevatedButton(
@@ -942,6 +1014,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     NodeContents nextNodeContents = NodeContents(
                       index: _indexIndex,
                       kind: currentNodeContents.kind,
+                      isDataEntry: false,
                     );
                     /*_controller.*/
                     addEdgeByData(
@@ -972,6 +1045,15 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
+  void onNodeTap(NodeContents data) {
+    print('(FH6)${data.index}....${data.isDataEntry}');
+    if (data.isDataEntry ?? false) {
+      showDataEntryDialog(data);
+    } else {
+      showStandardDialog(data);
+    }
+  }
+
   bool isIndexEqual(NodeContents? n1, NodeContents? n2) {
     if ((n1 == null) || (n2 == null)) return false;
     if (n1.index == n2.index) return true;
@@ -980,18 +1062,23 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Widget drawNode(NodeContents data) {
     //1print('(FF430)${data.index}');
-    String inputString = data.input ?? '';
-    switch (data.kind) {
-      case (ke):
-        return Text('2ERROR 2}');
-      case (kd):
-        return Text('${inputString}>${getResult(data)}');
-      case (kt):
-        return Text('${inputString}>${getResult(data)}');
-      case (ks):
-        return Text('${inputString}>${getResult(data)}');
-      case (null):
-        return Text('3ERROR 3');
+    if (data.isDataEntry ?? false) {
+      return Text((data.doubleResult ?? 'X').toString());
+    } else {
+      String inputString = data.input ?? '';
+      print('(FG6)${data.index}....${data.kind}');
+      switch (data.kind) {
+        case (ke):
+          return Text('ERROR}....${inputString}>${getResult(data)}');
+        case (kd):
+          return Text('${inputString}>${getResult(data)}');
+        case (kt):
+          return Text('${inputString}>${getResult(data)}');
+        case (ks):
+          return Text('${inputString}>${getResult(data)}');
+        case (null):
+          return Text('NULL');
+      }
     }
   }
 
@@ -1082,7 +1169,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       charWidth +
                       resultWidth);
                   print(
-                    '(FG3)${(data.input ?? '').length.toDouble()}....${data.kind},,,,',
+                    '(FG3)${data.index}<<<<${(data.input ?? '').length.toDouble()}....${data.kind},,,,${boxWidth}>>>>${color}',
                   );
                   return GestureDetector(
                     onTap: () {
@@ -1095,7 +1182,9 @@ class _MyHomePageState extends State<MyHomePage> {
                       height: 24,
                       decoration: BoxDecoration(
                         color: setBoxColor(data),
-                        borderRadius: BorderRadius.circular(1),
+                        borderRadius: BorderRadius.circular(
+                          (data.isDataEntry ?? false) ? 10 : 1,
+                        ),
                         border: Border.all(color: color, width: 1),
                       ),
                       alignment: Alignment.center,
@@ -1351,7 +1440,11 @@ class _MyHomePageState extends State<MyHomePage> {
       children: [
         ElevatedButton(
           onPressed: () {
-            NodeContents n = NodeContents(index: _indexIndex, kind: kd);
+            NodeContents n = NodeContents(
+              index: _indexIndex,
+              kind: kd,
+              isDataEntry: false,
+            );
             _controller.addNode(n);
             _indexIndex++;
           },
