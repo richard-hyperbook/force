@@ -12,7 +12,7 @@ import 'package:appwrite/models.dart' as models;
 import 'dart:io';
 import 'dart:convert';
 
-const buildNumber = 14;
+const buildNumber = 15;
 const double arrowHeight = 7;
 const double arrowWidth = 7;
 const double lineWidth = 3;
@@ -40,6 +40,9 @@ const kSpreadsheets = 'spreadsheets';
 const kColumnFilename = 'filename';
 const kColumnJson = 'json';
 const imageFilenameHead = kEndpoint + '/storage/buckets';
+Group chosenGroup = nullGroup;
+NodeFunction chosenNodeFunction = NodeFunction.add;
+
 Client? client;
 Databases? appwriteDatabases;
 Account? account;
@@ -49,6 +52,9 @@ TextEditingController filenameTextEditingController = TextEditingController(
   text: '',
 );
 TextEditingController dataEntryTextEditingController = TextEditingController(
+  text: '',
+);
+TextEditingController groupNameTextEditingController = TextEditingController(
   text: '',
 );
 
@@ -62,6 +68,12 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ToastificationWrapper(
+      config: const ToastificationConfig(
+        alignment: Alignment.center,
+        itemWidth: 440,
+        animationDuration: Duration(milliseconds: 500),
+        blockBackgroundInteraction: false,
+      ),
       child: MaterialApp(
         title: 'Visual Spreadsheet ${buildNumber}',
         debugShowCheckedModeBanner: false,
@@ -118,6 +130,20 @@ enum NodeOperation {
   addDoubleToString,
 }
 
+enum NodeFunction { nof, add, multiply, reciprocate }
+
+const NodeFunction kNof = NodeFunction.nof;
+const NodeFunction kAdd = NodeFunction.add;
+const NodeFunction kMultiply = NodeFunction.multiply;
+const NodeFunction kReciprocate = NodeFunction.reciprocate;
+
+const Map<NodeFunction, String> nodeFunctionSymbol = {
+  kNof: '?',
+  kAdd: '+',
+  kMultiply: '*',
+  kReciprocate: '\u2339',
+};
+
 class NodeContents {
   int? index;
   NodeKind? kind;
@@ -129,6 +155,7 @@ class NodeContents {
   bool? isEndNode;
   bool? isHighlight;
   bool? isDataEntry;
+  NodeFunction? nodeFunction;
 
   //TextEditingController? textEditingController = TextEditingController(
   // text: '',
@@ -144,6 +171,7 @@ class NodeContents {
     this.isEndNode,
     this.isHighlight,
     required this.isDataEntry,
+    required this.nodeFunction,
   });
 
   Map<String, dynamic> toJson() {
@@ -158,6 +186,7 @@ class NodeContents {
       'isEndNode': isEndNode,
       'isHighlight': isHighlight,
       'isDataEntry': isDataEntry,
+      'nodeFunction': nodeFunction!.name,
     };
     //1print('(FF750)${this.index}....${this.kind},,,,${m}');
     return m;
@@ -188,6 +217,7 @@ class NodeContents {
     isEndNode: json["isEndNode"] as bool,
     isHighlight: json['isHighlight'] as bool,
     isDataEntry: json['isDataEntry'] as bool,
+    nodeFunction: NodeFunction.values.byName(json['nodeFunction']),
   );
 
   /*LinkItem.fromJson(Map<String, dynamic> json)
@@ -213,6 +243,7 @@ class NodeContents {
       ), //json['dateTimeResult'] as DateTime,
       stringResult: json['stringResul'] as String,
       isDataEntry: json['isDataEntry'] as bool,
+      nodeFunction: NodeFunction.values.byName(json['nodeFunction']),
     );
   }
 }
@@ -239,25 +270,90 @@ NodeContents deserializeNodeContents(dynamic d) {
     isEndNode: nd['isEndNode'],
     isHighlight: nd['isHighlight'],
     isDataEntry: nd['isDataEntry'],
+    nodeFunction: NodeFunction.values.byName(nd['nodeFunction']),
   );
+}
+
+Group deserializeGroupContents(dynamic d) {
+  print('(FH1005A)${d.runtimeType}');
+  //Map<String, dynamic> nd = d['data'];
+  var dd = d as Map<String, dynamic>;
+  print('(FH1005B)${d}....${dd}');
+
+  return Group(
+    name: dd['name'],
+    nodeIndexes: getNodeIndexesFromString(dd['nodeIndexes']),
+    isVisible: dd['input'],
+  );
+}
+
+class Spreadsheet {}
+
+List<int> getNodeIndexesFromString(String s) {
+  List<int> ni = [];
+  List<String> ss = s.split(',');
+  for (int i = 0; i < ss.length; i++) {
+    int? index = int.tryParse(ss[i]);
+    if (index != null) {
+      ni.add(index);
+    }
+  }
+  return ni;
+}
+
+final Group nullGroup = Group(name: '', nodeIndexes: [], isVisible: false);
+
+Group groupFromMap(Map<String, dynamic> groupMap) {
+  String nodeIndexesString = groupMap['nodeIndexes'];
+
+  List<String> nodeIndexesStringList = nodeIndexesString.split(',');
+  List<int> nodeIndexesList = [];
+  for (int i = 0; i < nodeIndexesStringList.length; i++) {
+    nodeIndexesList.add(int.tryParse(nodeIndexesStringList[i]) ?? -1);
+  }
+  print('(FH86)${groupMap}....');
+  Group group = Group(
+    name: groupMap['name'],
+    nodeIndexes: nodeIndexesList,
+    isVisible: groupMap['isVisible'],
+  );
+  print(
+    '(FH1002)${nodeIndexesString}....${groupMap},,,,${nodeIndexesList}====${group}',
+  );
+  return group;
+}
+
+String groupsToJson() {
+  List<Set<Map<String, dynamic>>> x = _controller.graph.groups
+      .map((e) => {e.toJson()})
+      .toList();
+  print('(FH61)${x}');
+  String s = jsonEncode({
+    'groups': _controller.graph.groups.map((e) => e.toJson()).toList(),
+  });
+  print('(FH60)${s}');
+  return s;
+}
+
+void loadGroupsFromJson(String json) {
+  final decodedJson = jsonDecode(json);
+  print('(FH70)${json}....${decodedJson}');
+  for (final groupData in decodedJson['groups']) {
+    Group group = groupFromMap(groupData);
+    _controller.graph.groups.add(group);
+    print('(FH7)${groupData}....${group}');
+  }
 }
 
 late final ForceDirectedGraphController _controller;
 
-/*class EdgeExtra {
-  int? indexA;
-  int? indexB;
-  bool? isActive;
-  EdgeExtra(this.indexA, this.indexB, this.isActive);
-}*/
-
-// List<EdgeExtra> _edgeExtras = [];
+List<EdgeExtra> _edgeExtras = [];
 
 void dumpGraph() {
   print('1');
   for (var node in _controller.graph.nodes) {
     print(
-      '(FFDN)--x>${node.position.x}--y>${node.position.y}>>>>${node.data.index}<<<<${node.data.input}££££${node.data.kind};;;;${node.data.doubleResult}::::${node.data.dateTimeResult}@@@@${node.data.stringResult}',
+      '(FFDN)--x>${node.position.x}--y>${node.position.y}>>>>${node.data.index}<<<<${node.data.input}££££${node.data.kind};;;;${node.data.doubleResult}::::${node.data.dateTimeResult}@@@@${node.data.stringResult}@@@@${(node.data.nodeFunction?? kNof).name}',
     );
   }
   for (var edge in _controller.graph.edges) {
@@ -266,6 +362,11 @@ void dumpGraph() {
     );
     print(
       '(FFDF)${edge.a.position}||||${edge.a.mass}....${edge.b.position}!!!!${edge.b.mass},,,,${edge.distance}????${edge.angle}',
+    );
+  }
+  for (int i = 0; i < _controller.graph.groups.length; i++) {
+    print(
+      '(FFDG)${_controller.graph.groups[i].name}....${_controller.graph.groups[i].nodeIndexes},,,,${_controller.graph.groups[i].isVisible}',
     );
   }
 }
@@ -383,6 +484,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 index: _indexIndex++,
                 input: '',
                 isDataEntry: false,
+                nodeFunction: NodeFunction.add,
               );
             },
           ),
@@ -481,6 +583,15 @@ class _MyHomePageState extends State<MyHomePage> {
     for (int i = 0; i < _controller.graph.nodes.length; i++) {
       if (_controller.graph.nodes[i].data.index == index) {
         _controller.graph.nodes[i].data.isHighlight = value;
+        break;
+      }
+    }
+  }
+
+  void setControllerNodeFunction({int? index, NodeFunction? value}) {
+    for (int i = 0; i < _controller.graph.nodes.length; i++) {
+      if (_controller.graph.nodes[i].data.index == index) {
+        _controller.graph.nodes[i].data.nodeFunction = value;
         break;
       }
     }
@@ -713,13 +824,17 @@ class _MyHomePageState extends State<MyHomePage> {
     return pickedDate;
   }
 
-  void showDataEntryDialog(NodeContents data) {
+  String getPassiveEdgeResult(NodeContents data) {
     String passiveEdgeResult = '';
     for (int i = 0; i < _controller.graph.edges.length; i++) {
-      print('(FH7)${_controller.graph.edges[i].a.data.index}....${_controller.graph.edges[i].b.data.index}');
+      print(
+        '(FH7)${_controller.graph.edges[i].a.data.index}....${_controller.graph.edges[i].b.data.index}',
+      );
       if ((_controller.graph.edges[i].b.data.index == data.index) &&
           (!_controller.graph.edges[i].edgeExtra.isActive!)) {
-        print('(FH8)${_controller.graph.edges[i].a.data.index}....${_controller.graph.edges[i].a!.data.kind}');
+        print(
+          '(FH8)${_controller.graph.edges[i].a.data.index}....${_controller.graph.edges[i].a!.data.kind}',
+        );
         switch (_controller.graph.edges[i].a!.data.kind) {
           case ke:
             passiveEdgeResult = '5ERROR';
@@ -745,6 +860,28 @@ class _MyHomePageState extends State<MyHomePage> {
         break;
       }
     }
+    return passiveEdgeResult;
+  }
+
+  String getGroupsStringList(NodeContents data) {
+    String groupStringList = '';
+    for (int i = 0; i < _controller.graph.groups.length; i++) {
+      for (
+        int j = 0;
+        j < _controller.graph.groups[i].nodeIndexes!.length;
+        j++
+      ) {
+        if (_controller.graph.groups[i].nodeIndexes![j] == data.index) {
+          groupStringList =
+              '${groupStringList}, ${_controller.graph.groups[i].name!}';
+        }
+      }
+    }
+    return groupStringList;
+  }
+
+  void showDataEntryDialog(NodeContents data) {
+    String passiveEdgeResult = getPassiveEdgeResult(data);
     showDialog<double>(
       context: context,
       builder: (BuildContext context) {
@@ -757,29 +894,47 @@ class _MyHomePageState extends State<MyHomePage> {
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
               TextField(controller: dataEntryController, onChanged: (value) {}),
-              ElevatedButton(
-                child: const Text('Enter'),
-                onPressed: () {
-                  String value = dataEntryController!.text;
-                  // double? doubleValue = double.tryParse(value);
-                  print('(FH5)${value}++++${data.index}');
-                  double? doubleValue = double.tryParse(value);
-                  setState(() {
-                    if (doubleValue == null) {
-                      setControllerKind(index: data.index, kind: ks);
-                    } else {
-                      setControllerKind(index: data.index, kind: kd);
+              Row(
+                children: [
+                  ElevatedButton(
+                    child: const Text('Enter'),
+                    onPressed: () {
+                      String value = dataEntryController!.text;
+                      // double? doubleValue = double.tryParse(value);
+                      print('(FH5)${value}++++${data.index}');
                       double? doubleValue = double.tryParse(value);
-                      setControllerInput(index: data.index, value: value);
-                      setControllerResult(
-                        index: data.index,
-                        value: doubleValue ?? 'Y',
-                      );
-                    }
-                    setControllerInput(index: data.index, value: value);
-                  });
-                  Navigator.of(context).pop();
-                },
+                      setState(() {
+                        if (doubleValue == null) {
+                          setControllerKind(index: data.index, kind: ks);
+                        } else {
+                          setControllerKind(index: data.index, kind: kd);
+                          double? doubleValue = double.tryParse(value);
+                          setControllerInput(index: data.index, value: value);
+                          setControllerResult(
+                            index: data.index,
+                            value: doubleValue ?? 'Y',
+                          );
+                        }
+                        setControllerInput(index: data.index, value: value);
+                      });
+                      Navigator.of(context).pop();
+                    },
+                  ),
+                  ElevatedButton(
+                    child: const Text('Clear data entry'),
+                    onPressed: () {
+                      setState(() {
+                        setControllerIsDataEntry(
+                          index: data.index,
+                          value: false,
+                        );
+                      });
+                      setControllerIsDataEntry(index: data.index, value: false);
+                      Navigator.of(context).pop();
+                      showStandardDialog(data);
+                    },
+                  ),
+                ],
               ),
             ],
           ),
@@ -789,162 +944,258 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void showStandardDialog(NodeContents data) {
-    print('(FH7)');
+    String passiveEdgeResult = getPassiveEdgeResult(data);
+    String groupsStringList = getGroupsStringList(data);
+    if (groupsStringList.length > 0) {
+      groupsStringList = 'Groups: ${groupsStringList}';
+    }
+    print('(FH7)${passiveEdgeResult}');
     showDialog<double>(
       context: context,
       builder: (BuildContext context) {
-        TextEditingController textEditingController = TextEditingController(
-          text: data.input,
-        );
-        return AlertDialog(
-          title: const Text('Enter Value'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              TextField(
-                controller: textEditingController,
-                onChanged: (value) {
-                  //1print('(FF12)');
-                },
-              ),
+        return StatefulBuilder(
+          builder: (context, setStateMain) {
+            TextEditingController textEditingController = TextEditingController(
+              text: data.input,
+            );
 
-              Row(
-                children: [
-                  ElevatedButton(
-                    child: const Text('Enter'),
-                    onPressed: () {
-                      String value = textEditingController!.text;
-                      // double? doubleValue = double.tryParse(value);
-                      //1print('(FF11)${value}++++${data.index}');
-                      double? doubleValue = double.tryParse(value);
-                      setState(() {
-                        if (doubleValue == null) {
-                          setControllerKind(index: data.index, kind: ks);
-                        } else {
-                          setControllerKind(index: data.index, kind: kd);
-                        }
-                        setControllerInput(index: data.index, value: value);
-                      });
-                      Navigator.of(context).pop();
+            return AlertDialog(
+              title: Text(passiveEdgeResult + '     ' + groupsStringList),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  TextField(
+                    controller: textEditingController,
+                    onChanged: (value) {
+                      //1print('(FF12)');
                     },
                   ),
-                  ElevatedButton(
-                    child: const Text('Set data entry'),
-                    onPressed: () async {
-                      setState(() {
-                        setControllerIsDataEntry(
-                          index: data.index,
-                          value: true,
-                        );
-                      });
-                      Navigator.of(context).pop();
-                    },
-                  ),
-                  ElevatedButton(
-                    child: const Text('Enter date'),
-                    onPressed: () async {
-                      setControllerKind(index: data.index, kind: kt);
-                      DateTime? d = await selectDate();
-                      setState(() {
-                        if (d == null) {
-                          setControllerInput(index: data.index, value: null);
-                        } else {
-                          setControllerInput(
-                            index: data.index,
-                            value: dateToString(d),
-                          );
-                        }
-                      });
-                      Navigator.of(context).pop();
-                    },
-                  ),
-                ],
-              ),
-              Row(
-                children: [
-                  ElevatedButton(
-                    child: const Text('Add node'),
-                    onPressed: () {
-                      //1print('(FF13A)');
 
-                      /*_controller.*/
-                      addEdgeByData(
-                        nodeA: data,
-                        nodeB: NodeContents(
-                          kind: kd,
-                          index: _indexIndex,
-                          input: '',
-                          isDataEntry: false,
-                        ),
-                      );
-                      _indexIndex++;
-                      // _nodes.clear();
-                      // _edges.clear();
-                      Navigator.of(context).pop();
-                    },
-                  ),
-                ],
-              ),
-              Row(
-                children: [
-                  ElevatedButton(
-                    child: const Text('Nullify node'),
-                    onPressed: () {
-                      setState(() {
-                        //1print('(FF410)');
-                        setControllerInput(index: data.index, value: '');
-                      });
-                      Navigator.of(context).pop();
-                    },
-                  ),
-                  ElevatedButton(
-                    child: const Text('Delete node'),
-                    onPressed: () {
-                      setState(() {
-                        //1print('(FF411)${data.index}');
-                        if (data.index == 0) {
-                          toastification.show(
-                            context: context,
-                            title: Text('Cannot delete first node'),
-                          );
-                        } else {
-                          for (
-                            int i = 0;
-                            i < _controller.graph.edges.length;
-                            i++
-                          ) {
-                            if ((_controller.graph.edges[i].a.data.index ==
-                                    data.index) ||
-                                (_controller.graph.edges[i].b.data.index ==
-                                    data.index)) {
-                              //1print(
-                              //1      '(FF412)${_controller.graph.edges[i].a.data.index}....${_controller.graph.edges[i].b.data.index}',
-                              //1 );
-                              /*_controller.*/
-                              deleteEdgeByData(
-                                nodeA: _controller.graph.edges[i].a.data,
-                                nodeB: _controller.graph.edges[i].a.data,
+                  Row(
+                    children: [
+                      ElevatedButton(
+                        child: const Text('Enter'),
+                        onPressed: () {
+                          String value = textEditingController!.text;
+                          // double? doubleValue = double.tryParse(value);
+                          //1print('(FF11)${value}++++${data.index}');
+                          double? doubleValue = double.tryParse(value);
+                          setState(() {
+                            if (doubleValue == null) {
+                              setControllerKind(index: data.index, kind: ks);
+                            } else {
+                              setControllerKind(index: data.index, kind: kd);
+                            }
+                            setControllerInput(index: data.index, value: value);
+                          });
+                          Navigator.of(context).pop();
+                        },
+                      ),
+                      ElevatedButton(
+                        child: const Text('Set data entry'),
+                        onPressed: () async {
+                          setState(() {
+                            setControllerIsDataEntry(
+                              index: data.index,
+                              value: true,
+                            );
+                          });
+                          Navigator.of(context).pop();
+                        },
+                      ),
+                      ElevatedButton(
+                        child: const Text('Enter date'),
+                        onPressed: () async {
+                          setControllerKind(index: data.index, kind: kt);
+                          DateTime? d = await selectDate();
+                          setState(() {
+                            if (d == null) {
+                              setControllerInput(
+                                index: data.index,
+                                value: null,
+                              );
+                            } else {
+                              setControllerInput(
+                                index: data.index,
+                                value: dateToString(d),
                               );
                             }
-                            //1print('(FF413)${data.index}');
-                            _controller.deleteNodeByData(data);
-                          }
-                          setControllerInput(index: data.index, value: null);
-                        }
-                      });
-                      Navigator.of(context).pop();
-                    },
+                          });
+                          Navigator.of(context).pop();
+                        },
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              Row(
-                children: [
+                  Row(
+                    children: [
+                      ElevatedButton(
+                        child: const Text('Add node'),
+                        onPressed: () {
+                          //1print('(FF13A)');
+
+                          /*_controller.*/
+                          addEdgeByData(
+                            nodeA: data,
+                            nodeB: NodeContents(
+                              kind: kd,
+                              index: _indexIndex,
+                              input: '',
+                              isDataEntry: false,
+                              nodeFunction: NodeFunction.add,
+                            ),
+                          );
+                          _indexIndex++;
+                          // _nodes.clear();
+                          // _edges.clear();
+                          Navigator.of(context).pop();
+                        },
+                      ),
+
+                      Container(
+                        width: 200,
+                        height: 34,
+                        child: Row(
+                          children: [
+                            Text('Function: '),
+                            Container(
+                              width: 100,
+                              height: 30,
+
+                              child: DropdownButton<NodeFunction>(
+                                //  key: ValueKey(widget),
+                                value: data.nodeFunction,
+                                hint: const Text('Please select group'),
+                                items: NodeFunction.values
+                                    .map<DropdownMenuItem<NodeFunction>>((
+                                      NodeFunction item,
+                                    ) {
+                                      return DropdownMenuItem<NodeFunction>(
+                                        value: item,
+                                        child: Text(item.name),
+                                      );
+                                    })
+                                    .toList(),
+                                elevation: 2,
+                                onChanged: (value) {
+                                  setState(() {
+                                    setControllerNodeFunction(index: data.index, value: value);
+                                  });
+                                  setStateMain(() {});
+                                  print(
+                                    '(FH90)${value!.name}....${value.index}',
+                                  );
+                                },
+                                isExpanded: true,
+                                focusColor: Colors.transparent,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      ElevatedButton(
+                        child: const Text('Nullify node'),
+                        onPressed: () {
+                          setState(() {
+                            //1print('(FF410)');
+                            setControllerInput(index: data.index, value: '');
+                          });
+                          Navigator.of(context).pop();
+                        },
+                      ),
+                      ElevatedButton(
+                        child: const Text('Delete node'),
+                        onPressed: () {
+                          setState(() {
+                            //1print('(FF411)${data.index}');
+                            if (data.index == 0) {
+                              toastification.show(
+                                context: context,
+                                title: Text('Cannot delete first node'),
+                              );
+                            } else {
+                              for (
+                                int i = 0;
+                                i < _controller.graph.edges.length;
+                                i++
+                              ) {
+                                if ((_controller.graph.edges[i].a.data.index ==
+                                        data.index) ||
+                                    (_controller.graph.edges[i].b.data.index ==
+                                        data.index)) {
+                                  //1print(
+                                  //1      '(FF412)${_controller.graph.edges[i].a.data.index}....${_controller.graph.edges[i].b.data.index}',
+                                  //1 );
+                                  /*_controller.*/
+                                  deleteEdgeByData(
+                                    nodeA: _controller.graph.edges[i].a.data,
+                                    nodeB: _controller.graph.edges[i].a.data,
+                                  );
+                                }
+                                //1print('(FF413)${data.index}');
+                                _controller.deleteNodeByData(data);
+                              }
+                              setControllerInput(
+                                index: data.index,
+                                value: null,
+                              );
+                            }
+                          });
+                          Navigator.of(context).pop();
+                        },
+                      ),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      ElevatedButton(
+                        child: const Text('Set start node'),
+                        onPressed: () {
+                          setState(() {
+                            //1print('(FF16)');
+                            setControllerIsStartNode(
+                              index: data.index!,
+                              value: true,
+                            );
+                          });
+
+                          Navigator.of(context).pop();
+                        },
+                      ),
+
+                      ElevatedButton(
+                        child: const Text('Set end node'),
+                        onPressed: () {
+                          //1print('(FF17)');
+                          setState(() {
+                            //1print('(FF16)');
+                            setControllerIsEndNode(
+                              index: data.index!,
+                              value: true,
+                            );
+                          });
+
+                          Navigator.of(context).pop();
+                        },
+                      ),
+                      ElevatedButton(
+                        child: const Text('Clear all node status'),
+                        onPressed: () {
+                          //1print('(FF17)');
+                          clearAllNodeStatus();
+                          Navigator.of(context).pop();
+                        },
+                      ),
+                    ],
+                  ),
                   ElevatedButton(
-                    child: const Text('Set start node'),
+                    child: const Text('Highlight node'),
                     onPressed: () {
                       setState(() {
-                        //1print('(FF16)');
-                        setControllerIsStartNode(
+                        setControllerIsHighlight(
                           index: data.index!,
                           value: true,
                         );
@@ -955,91 +1206,47 @@ class _MyHomePageState extends State<MyHomePage> {
                   ),
 
                   ElevatedButton(
-                    child: const Text('Set end node'),
+                    child: const Text('Make chain'),
                     onPressed: () {
-                      //1print('(FF17)');
-                      setState(() {
-                        //1print('(FF16)');
-                        setControllerIsEndNode(index: data.index!, value: true);
-                      });
+                      //1print('(FF700)');
+                      NodeContents currentNodeContents = data;
+                      double rootNodeX = getNodePosition(data.index)!.x;
+                      double rootNodeY = getNodePosition(data.index)!.y;
+                      int? replicationCount =
+                          int.tryParse(textEditingController!.text) ?? 1;
+                      for (int i = 0; i < replicationCount; i++) {
+                        NodeContents nextNodeContents = NodeContents(
+                          index: _indexIndex,
+                          kind: currentNodeContents.kind,
+                          isDataEntry: false,
+                          nodeFunction: NodeFunction.add,
+                        );
+                        /*_controller.*/
+                        addEdgeByData(
+                          nodeA: currentNodeContents,
+                          nodeB: nextNodeContents,
+                        );
+                        vector.Vector2 nextPos = vector.Vector2(
+                          rootNodeX,
+                          rootNodeY - ((i.toDouble() + 1) * chainYincrement),
+                        );
+                        //1print('(FF747)${rootNodeX}....${rootNodeY},,,,${nextPos}');
+                        setNodePosition(nextNodeContents.index, nextPos);
+                        setControllerInput(
+                          index: nextNodeContents.index,
+                          value: currentNodeContents.input,
+                        );
+                        _indexIndex++;
+                        currentNodeContents = nextNodeContents;
+                      }
 
-                      Navigator.of(context).pop();
-                    },
-                  ),
-                  ElevatedButton(
-                    child: const Text('Clear node status'),
-                    onPressed: () {
-                      //1print('(FF17)');
-                      setState(() {
-                        //1print('(FF16)');
-                        setControllerIsStartNode(
-                          index: data.index!,
-                          value: false,
-                        );
-                        setControllerIsEndNode(
-                          index: data.index!,
-                          value: false,
-                        );
-                      });
-                      setControllerIsHighlight(
-                        index: data.index!,
-                        value: false,
-                      );
                       Navigator.of(context).pop();
                     },
                   ),
                 ],
               ),
-              ElevatedButton(
-                child: const Text('Highlight node'),
-                onPressed: () {
-                  setState(() {
-                    setControllerIsHighlight(index: data.index!, value: true);
-                  });
-
-                  Navigator.of(context).pop();
-                },
-              ),
-
-              ElevatedButton(
-                child: const Text('Make chain'),
-                onPressed: () {
-                  //1print('(FF700)');
-                  NodeContents currentNodeContents = data;
-                  double rootNodeX = getNodePosition(data.index)!.x;
-                  double rootNodeY = getNodePosition(data.index)!.y;
-                  int? replicationCount =
-                      int.tryParse(textEditingController!.text) ?? 1;
-                  for (int i = 0; i < replicationCount; i++) {
-                    NodeContents nextNodeContents = NodeContents(
-                      index: _indexIndex,
-                      kind: currentNodeContents.kind,
-                      isDataEntry: false,
-                    );
-                    /*_controller.*/
-                    addEdgeByData(
-                      nodeA: currentNodeContents,
-                      nodeB: nextNodeContents,
-                    );
-                    vector.Vector2 nextPos = vector.Vector2(
-                      rootNodeX,
-                      rootNodeY - ((i.toDouble() + 1) * chainYincrement),
-                    );
-                    //1print('(FF747)${rootNodeX}....${rootNodeY},,,,${nextPos}');
-                    setNodePosition(nextNodeContents.index, nextPos);
-                    setControllerInput(
-                      index: nextNodeContents.index,
-                      value: currentNodeContents.input,
-                    );
-                    _indexIndex++;
-                    currentNodeContents = nextNodeContents;
-                  }
-
-                  Navigator.of(context).pop();
-                },
-              ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
@@ -1063,7 +1270,7 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget drawNode(NodeContents data) {
     //1print('(FF430)${data.index}');
     if (data.isDataEntry ?? false) {
-      return Text((data.doubleResult ?? 'X').toString());
+      return Text((data.doubleResult ?? '').toString());
     } else {
       String inputString = data.input ?? '';
       print('(FG6)${data.index}....${data.kind}');
@@ -1080,6 +1287,27 @@ class _MyHomePageState extends State<MyHomePage> {
           return Text('NULL');
       }
     }
+  }
+
+  bool isVisibleAnyGroupsNode({int? nodeIndex}) {
+    bool inGroup = false;
+    bool isVisible = false;
+    for (int i = 0; i < _controller.graph.groups.length; i++) {
+      for (
+        int j = 0;
+        j < _controller.graph.groups[i].nodeIndexes!.length;
+        j++
+      ) {
+        if (_controller.graph.groups[i].nodeIndexes![j] == nodeIndex) {
+          inGroup = true;
+          if (_controller.graph.groups[i].isVisible!) {
+            isVisible = true;
+            break;
+          }
+        }
+      }
+    }
+    return (isVisible || !inGroup);
   }
 
   @override
@@ -1107,14 +1335,10 @@ class _MyHomePageState extends State<MyHomePage> {
                 },
                 onDraggingUpdate: (NodeContents data) {},
                 nodesBuilder: (context, NodeContents data) {
-                  /*               if (edgeStartNodeContents == null) {
-                    //1print('(FF200A)${data.index}....${edgeStartNodeContents}');
-                  } else {
-                    //1print(
-                      '(FF200B)${data.index}....${edgeStartNodeContents!.index}',
-                    );
-                  }*/
                   Color color;
+                  if (!isVisibleAnyGroupsNode(nodeIndex: data.index)) {
+                    return Container();
+                  }
                   for (int i = 0; i < _controller.graph.edges.length; i++) {
                     if (_controller.graph.edges[i].b.data.index == data.index) {
                       if ((_controller.graph.edges[i].a.data.kind == kt) &&
@@ -1177,35 +1401,54 @@ class _MyHomePageState extends State<MyHomePage> {
                       onNodeTap(data);
                     },
 
-                    child: Container(
-                      width: boxWidth + (boxPadding * 2),
-                      height: 24,
-                      decoration: BoxDecoration(
-                        color: setBoxColor(data),
-                        borderRadius: BorderRadius.circular(
-                          (data.isDataEntry ?? false) ? 10 : 1,
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 24,
+                          height: 24,
+                          child: Text(nodeFunctionSymbol[data.nodeFunction]?? '£'),
+                          decoration: BoxDecoration(
+                            color: setBoxColor(data),
+                            borderRadius: BorderRadius.circular(
+                              (data.isDataEntry ?? false) ? 10 : 1,
+                            ),
+                            border: Border.all(color: color, width: 1),
+                          ),
                         ),
-                        border: Border.all(color: color, width: 1),
-                      ),
-                      alignment: Alignment.center,
-                      child: _scale > 0.5
-                          ? Row(
-                              children: [
-                                Container(
-                                  width: boxWidth,
-                                  height: 22,
-                                  //     color: Colors.amber,
-                                  child: drawNode(data),
-                                ),
-                              ],
-                            )
-                          : null,
+                        Container(
+                          width: boxWidth + (boxPadding * 2),
+                          height: 24,
+                          decoration: BoxDecoration(
+                            color: setBoxColor(data),
+                            borderRadius: BorderRadius.circular(
+                              (data.isDataEntry ?? false) ? 10 : 1,
+                            ),
+                            border: Border.all(color: color, width: 1),
+                          ),
+                          alignment: Alignment.center,
+                          child: _scale > 0.5
+                              ? Row(
+                                  children: [
+                                    Container(
+                                      width: boxWidth,
+                                      height: 22,
+                                      //     color: Colors.amber,
+                                      child: drawNode(data),
+                                    ),
+                                  ],
+                                )
+                              : null,
+                        ),
+                      ],
                     ),
                   );
                 },
                 edgesBuilder: (context, a, b, distance) {
                   Color color = Colors.black87;
-
+                  if ((!isVisibleAnyGroupsNode(nodeIndex: a.index!)) ||
+                      (!isVisibleAnyGroupsNode(nodeIndex: b.index))) {
+                    return Container();
+                  }
                   if ((isIndexEqual(edgeInputNodeContentsA, a)) &&
                       (isIndexEqual(edgeInputNodeContentsB, b)))
                     color = Colors.red;
@@ -1435,6 +1678,390 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {});
   }
 
+  void setGroupIsVisible({String? groupName, bool? value}) {
+    for (int i = 0; i < _controller.graph.groups.length; i++) {
+      print(
+        '(FH87A)${i},,,,${groupName}....${_controller.graph.groups[i].name}',
+      );
+      if (groupName == _controller.graph.groups[i].name) {
+        _controller.graph.groups[i].isVisible = value;
+        print('(FH87A)${i},,,,${_controller.graph.groups[i].isVisible}');
+      }
+    }
+  }
+
+  void addNodeToGroup({String? groupName, int? nodeIndex}) {
+    if ((groupName == null) || (nodeIndex == null)) {
+      return;
+    }
+    print('(FH8A)');
+    for (int i = 0; i < _controller.graph.groups.length; i++) {
+      print('(FH8A)');
+      if (groupName == _controller.graph.groups[i].name) {
+        print(
+          '(FH8B)${i}....${_controller.graph.groups[i].nodeIndexes!.length}',
+        );
+        if (_controller.graph.groups[i].nodeIndexes!.length == 0) {
+          _controller.graph.groups[i].nodeIndexes!.add(nodeIndex);
+        } else {
+          bool found = false;
+          for (
+            int j = 0;
+            j < _controller.graph.groups[i].nodeIndexes!.length;
+            j++
+          ) {
+            print('(FH8C)');
+            if (_controller.graph.groups[i].nodeIndexes![j] == nodeIndex) {
+              print('(FH8D)');
+              found = true;
+            }
+          }
+          if (!found) {
+            _controller.graph.groups[i].nodeIndexes!.add(nodeIndex);
+            print('(FH8E)${_controller.graph.groups[i].nodeIndexes}');
+          }
+        }
+      }
+    }
+  }
+
+  void removeNodeFromGroup({String? groupName, int? nodeIndex}) {
+    if ((groupName == null) || (nodeIndex == null)) {
+      return;
+    }
+    print('(FH6A)');
+    for (int i = 0; i < _controller.graph.groups.length; i++) {
+      print('(FH6A)');
+      if (groupName == _controller.graph.groups[i].name) {
+        print(
+          '(FH6B)${i}....${_controller.graph.groups[i].nodeIndexes!.length}',
+        );
+        if (_controller.graph.groups[i].nodeIndexes!.length == 0) {
+          _controller.graph.groups[i].nodeIndexes!.add(nodeIndex);
+        } else {
+          bool found = false;
+          for (
+            int j = 0;
+            j < _controller.graph.groups[i].nodeIndexes!.length;
+            j++
+          ) {
+            print('(FH6C)');
+            if (_controller.graph.groups[i].nodeIndexes![j] == nodeIndex) {
+              print('(FH6D)');
+              found = true;
+            }
+          }
+          if (!found) {
+            _controller.graph.groups[i].nodeIndexes!.remove(nodeIndex);
+            print('(FH6E)${_controller.graph.groups[i].nodeIndexes}');
+          }
+        }
+      }
+    }
+  }
+
+  void clearAllNodeStatus() {
+    setState(() {
+      //1print('(FF16)');
+      for (int i = 0; i < _controller.graph.nodes.length; i++) {
+        int index = _controller.graph.nodes[i].data.index!;
+        setControllerIsStartNode(index: index, value: false);
+        setControllerIsEndNode(index: index, value: false);
+        setControllerIsHighlight(index: index, value: false);
+      }
+    });
+  }
+
+  void showGroupsDialog() {
+    // bool? chosenGroupIsVisible;
+    const String kCreateGroupButtonCaption = 'Create group';
+    const String kCreateGroupButtonCaptionGroupExists = 'Group exists';
+
+    String createGroupButtonCaption = kCreateGroupButtonCaption;
+    if (_controller.graph.groups.length < 1)
+      print('(FH80)${_controller.graph.groups.length}');
+    else
+      print(
+        '(FH81)${_controller.graph.groups.length}...${_controller.graph.groups[0].name},,,,${chosenGroup.name}',
+      );
+    showDialog<double>(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setStateMain) {
+            return AlertDialog(
+              title: Text('Group: ${(chosenGroup ?? nullGroup).name}'),
+              content: Column(
+                children: [
+                  (_controller.graph.groups.length < 1)
+                      ? Text('No groups')
+                      : DropdownButton<Group>(
+                          //  key: ValueKey(widget),
+                          value: chosenGroup,
+                          hint: const Text('Please select group'),
+                          items: _controller.graph.groups
+                              .map<DropdownMenuItem<Group>>((Group item) {
+                                return DropdownMenuItem<Group>(
+                                  value: item,
+                                  child: Text(item.name!),
+                                );
+                              })
+                              .toList(),
+                          elevation: 2,
+                          onChanged: (value) {
+                            setState(() {
+                              chosenGroup = value!;
+                            });
+                            setStateMain(() {});
+                            print(
+                              '(FH352)${value!.name}....${value.isVisible}',
+                            );
+                          },
+                          isExpanded: true,
+                          focusColor: Colors.transparent,
+                        ),
+                  ElevatedButton(
+                    onPressed: () {
+                      print('(FH9A)');
+                      setState(() {
+                        for (
+                          int i = 0;
+                          i < _controller.graph.nodes.length;
+                          i++
+                        ) {
+                          print('(FH9B)${chosenGroup}');
+                          print(
+                            '(FH9C)${chosenGroup!.name},,,,${i}....${_controller.graph.nodes[i].data.isHighlight}',
+                          );
+                          if ((_controller.graph.nodes[i].data.isHighlight) ??
+                              false) {
+                            if (chosenGroup == nullGroup) {
+                              toastification.show(
+                                context: context,
+                                title: Text('Select group before adding nodes'),
+                              );
+                            } else {
+                              print(
+                                '(FH9D)${_controller.graph.nodes[i].data.index}',
+                              );
+                              addNodeToGroup(
+                                groupName: chosenGroup!.name,
+                                nodeIndex:
+                                    _controller.graph.nodes[i].data.index,
+                              );
+                            }
+                          }
+                        }
+                        for (Group group in _controller.graph.groups) {
+                          print('(FH10)${group.name}....${group.nodeIndexes}');
+                        }
+                      });
+                      setStateMain(() {});
+                      Navigator.of(context).pop();
+                    },
+                    child: Text('Add highlighted nodes to group'),
+                  ),
+
+                  ElevatedButton(
+                    onPressed: () {
+                      print('(FH9A)');
+                      setState(() {
+                        for (
+                          int i = 0;
+                          i < _controller.graph.nodes.length;
+                          i++
+                        ) {
+                          print('(FH9B)${chosenGroup}');
+                          print(
+                            '(FH9C)${chosenGroup!.name},,,,${i}....${_controller.graph.nodes[i].data.isHighlight}',
+                          );
+                          if ((_controller.graph.nodes[i].data.isHighlight) ??
+                              false) {
+                            if (chosenGroup == nullGroup) {
+                              toastification.show(
+                                context: context,
+                                title: Text(
+                                  'Select group before removing nodes',
+                                ),
+                              );
+                              print(
+                                '(FH91)${_controller.graph.nodes[i].data.index}',
+                              );
+                            } else {
+                              removeNodeFromGroup(
+                                groupName: chosenGroup!.name,
+                                nodeIndex:
+                                    _controller.graph.nodes[i].data.index,
+                              );
+                            }
+                          }
+                        }
+                        for (Group group in _controller.graph.groups) {
+                          print('(FH10)${group.name}....${group.nodeIndexes}');
+                        }
+                      });
+                      Navigator.of(context).pop();
+                    },
+                    child: Text('Remove highlighted nodes from group'),
+                  ),
+
+                  ElevatedButton(
+                    onPressed: () {
+                      clearAllNodeStatus();
+                      print('(FH9A)');
+                      setState(() {
+                        for (
+                          int i = 0;
+                          i < _controller.graph.nodes.length;
+                          i++
+                        ) {
+                          for (
+                            int j = 0;
+                            j < _controller.graph.groups.length;
+                            j++
+                          ) {
+                            for (
+                              int k = 0;
+                              k <
+                                  _controller
+                                      .graph
+                                      .groups[j]
+                                      .nodeIndexes!
+                                      .length;
+                              k++
+                            ) {
+                              print(
+                                '(FH30)${i}<${j}>${k}....${_controller.graph.groups[j].nodeIndexes},,,,${_controller.graph.nodes[i].data.index}',
+                              );
+
+                              if (_controller.graph.groups[j].nodeIndexes![i] ==
+                                  _controller.graph.nodes[i].data.index) {
+                                setState(() {
+                                  _controller.graph.nodes[i].data.isHighlight =
+                                      true;
+                                  print(
+                                    '(FH31)${i}<${j}>${k}....${_controller.graph.groups[j].nodeIndexes},,,,${_controller.graph.nodes[i].data.index}',
+                                  );
+                                });
+                                setStateMain(() {});
+                              }
+                            }
+                          }
+                        }
+                      });
+                      Navigator.of(context).pop();
+                    },
+                    child: Text('Highlight nodes of group'),
+                  ),
+
+                  ElevatedButton(
+                    child: Text('Make group visible'),
+                    onPressed: () {
+                      if (chosenGroup == nullGroup) {
+                        toastification.show(
+                          context: context,
+                          title: Text('Select group'),
+                        );
+                      } else {
+                        setState(() {
+                          setGroupIsVisible(
+                            groupName: chosenGroup!.name,
+                            value: true,
+                          );
+                        });
+                      }
+                      Navigator.of(context).pop();
+                    },
+                  ),
+                  ElevatedButton(
+                    child: Text('Make group invisible'),
+                    onPressed: () {
+                      if (chosenGroup == nullGroup) {
+                        toastification.show(
+                          context: context,
+                          title: Text('Select group'),
+                        );
+                      } else {
+                        setState(() {
+                          setGroupIsVisible(
+                            groupName: chosenGroup.name,
+                            value: false,
+                          );
+                        });
+                        print(
+                          '(FH40)${chosenGroup.name}....${_controller.graph.groups}',
+                        );
+                        Navigator.of(context).pop();
+                      }
+                    },
+                  ),
+
+                  /* CheckboxListTile(
+                    title: Text('Is group visible?'),
+                    tristate: true,
+                    value: chosenGroupIsVisible,
+                    onChanged: (value) {
+                      if (chosenGroup != null) {
+                        setState(() {
+                          chosenGroupIsVisible = value;
+                          setGroupIsVisible(
+                            groupName: chosenGroup!.name,
+                            value: value,
+                          );
+                        });
+                      }
+                    },
+                  ),*/
+                  Divider(),
+                  TextField(
+                    controller: groupNameTextEditingController,
+                    onChanged: (value) async {},
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      print('(FH360)');
+                      bool found = false;
+                      for (
+                        int i = 0;
+                        i < _controller.graph.groups.length;
+                        i++
+                      ) {
+                        if (groupNameTextEditingController.text ==
+                            _controller.graph.groups[i].name) {
+                          found = true;
+                          break;
+                        }
+                      }
+                      if (found) {
+                        setState(() {
+                          createGroupButtonCaption =
+                              kCreateGroupButtonCaptionGroupExists;
+                        });
+                      } else {
+                        setState(() {
+                          _controller.graph.groups.add(
+                            Group(
+                              name: groupNameTextEditingController.text,
+                              nodeIndexes: [],
+                              isVisible: true,
+                            ),
+                          );
+                          chosenGroup = _controller.graph.groups.last;
+                        });
+                        Navigator.of(context).pop();
+                      }
+                    },
+                    child: Text(createGroupButtonCaption),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   Widget _buildMenu(BuildContext context) {
     return Wrap(
       children: [
@@ -1444,6 +2071,7 @@ class _MyHomePageState extends State<MyHomePage> {
               index: _indexIndex,
               kind: kd,
               isDataEntry: false,
+              nodeFunction: NodeFunction.add,
             );
             _controller.addNode(n);
             _indexIndex++;
@@ -1493,7 +2121,7 @@ class _MyHomePageState extends State<MyHomePage> {
               context: context,
               builder: (BuildContext context) {
                 return StatefulBuilder(
-                  builder: (context, setState) {
+                  builder: (context, setStateMain) {
                     return AlertDialog(
                       title: const Text('Save spreadsheet'),
                       content: Column(
@@ -1538,6 +2166,7 @@ class _MyHomePageState extends State<MyHomePage> {
                                   "filename":
                                       filenameTextEditingController.text,
                                   "json": _json,
+                                  "buildNumber": buildNumber,
                                 },
                                 // permissions: [Permission.read(Role.any())], // optional
                                 // transactionId: '<TRANSACTION_ID>', // optional
@@ -1572,7 +2201,7 @@ class _MyHomePageState extends State<MyHomePage> {
               context: context,
               builder: (BuildContext context) {
                 return StatefulBuilder(
-                  builder: (context, setState) {
+                  builder: (context, setStateMain) {
                     return AlertDialog(
                       title: const Text('Load spreadsheet'),
 
@@ -1624,6 +2253,31 @@ class _MyHomePageState extends State<MyHomePage> {
                                         deserializeData3:
                                             deserializeNodeContents, //as NodeDataDeserializer<NodeContents>,
                                       );
+                                      int maxIndex = 0;
+                                      for (
+                                        int i = 0;
+                                        i < _controller.graph.nodes.length;
+                                        i++
+                                      ) {
+                                        if (_controller
+                                                .graph
+                                                .nodes[i]
+                                                .data
+                                                .index! >
+                                            maxIndex) {
+                                          maxIndex = _controller
+                                              .graph
+                                              .nodes[i]
+                                              .data
+                                              .index!;
+                                        }
+                                      }
+                                      _indexIndex = maxIndex + 1;
+
+                                      loadGroupsFromJson(
+                                        chosenDocument!.data['json'],
+                                      );
+
                                       Navigator.of(context).pop();
                                     });
                                   },
@@ -1657,7 +2311,7 @@ class _MyHomePageState extends State<MyHomePage> {
               context: context,
               builder: (BuildContext context) {
                 return StatefulBuilder(
-                  builder: (context, setState) {
+                  builder: (context, setStateMain) {
                     return AlertDialog(
                       title: const Text('Delete spreadsheet'),
                       content: (chosenDocument == null)
@@ -1737,19 +2391,19 @@ class _MyHomePageState extends State<MyHomePage> {
           child: const Text('reset'),
         ),
         ElevatedButton(
-          child: const Text('Add edges'),
+          child: const Text('add edges'),
           onPressed: () {
             addEdges(true);
           },
         ),
         ElevatedButton(
-          child: const Text('Add passive edges'),
+          child: const Text('add passive edges'),
           onPressed: () {
             addEdges(false);
           },
         ),
         ElevatedButton(
-          child: const Text('Align horiz.'),
+          child: const Text('align horiz.'),
           onPressed: () {
             alignHoriz();
           },
@@ -1772,8 +2426,15 @@ class _MyHomePageState extends State<MyHomePage> {
             }
             setState(() {});
           },
-          child: const Text('Clear node status'),
+          child: const Text('clear node status'),
         ),
+        ElevatedButton(
+          onPressed: () {
+            showGroupsDialog();
+          },
+          child: const Text('groups'),
+        ),
+
         Slider(
           value: _scale,
           min: _controller.minScale,

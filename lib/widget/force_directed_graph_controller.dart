@@ -170,6 +170,6 @@ class ForceDirectedGraphController extends ChangeNotifier {
 
   /// Serialize to json.
   String toJson() {
-    return _graph.toJson();
+    return _graph.toJson() ;
   }
 }

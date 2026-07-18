@@ -8,6 +8,7 @@ import 'config.dart';
 import 'edge.dart';
 import 'kd_tree.dart';
 import 'node.dart';
+import 'group.dart';
 
 typedef NodeDataSerializer = dynamic Function(NodeContents data);
 typedef NodeDataDeserializer = NodeContents Function(dynamic data);
@@ -15,6 +16,7 @@ typedef NodeDataDeserializer = NodeContents Function(dynamic data);
 class ForceDirectedGraph {
   final List<Node> nodes = [];
   final List<Edge> edges = [];
+  final List<Group> groups = [];
   final GraphConfig config;
 
   /// Create an empty graph.
@@ -67,7 +69,9 @@ class ForceDirectedGraph {
   ) {
     final nd = nodeComplete['data'];
     final pd = nodeComplete['position'];
-    print('(FF1002)${nd}....${nodeComplete}>>>>${deserializeData2.runtimeType}');
+    print(
+      '(FF1002)${nd}....${nodeComplete}>>>>${deserializeData2.runtimeType}',
+    );
     Node node = Node(
       nodeDataFromMap(nd, deserializeData2),
       Vector2(pd['x'], pd['y']),
@@ -75,17 +79,16 @@ class ForceDirectedGraph {
     return node;
   }
 
-  Node? getNodeFromIndexLocal(int? index){
+  Node? getNodeFromIndexLocal(int? index) {
     print('(FF4020)${index}....${nodes.length}');
-    for(int i = 0; i < nodes.length; i++){
+    for (int i = 0; i < nodes.length; i++) {
       print('(FF4021)${index}....${nodes[i].data.index},,,,${nodes[i]}');
-      if(index == nodes[i].data.index){
+      if (index == nodes[i].data.index) {
         return nodes[i];
       }
     }
     return null;
   }
-
 
   /// Create a graph from json.
   /// [resetPosition] will reset the position of the nodes.
@@ -95,8 +98,10 @@ class ForceDirectedGraph {
     bool resetPosition = false,
     this.config = const GraphConfig(),
   }) {
-    final decodedJson = jsonDecode(json);
-    print('(FF1001)${json}....${decodedJson}>>>>${deserializeData3.runtimeType}');
+    final Map<String, dynamic> decodedJson = jsonDecode(json);
+    print(
+      '(FF1001)${json}....${decodedJson}>>>>${deserializeData3.runtimeType}',
+    );
 
     for (final nodeData in decodedJson['nodes']) {
       Node node = nodeFromMap(nodeData, deserializeData3);
@@ -106,24 +111,26 @@ class ForceDirectedGraph {
         '(FF1003B)${nodes.length}<<<<${node}....${(node.data as NodeContents).index},,,,${node.position}',
       );
     }
-
     //The argument type 'NodeDataDeserializer<T>?' can't be assigned to the parameter type 'NodeDataDeserializer<Node<dynamic>>?'.
     for (final edgeData in decodedJson['edges']) {
       print('(FF1004)${edgeData}>>>>${deserializeData3.runtimeType}');
-      Node nodeAFromMap = nodeFromMap(
-        edgeData['a'],
-        deserializeData3,
-      );
-      Node nodeBFromMap = nodeFromMap(
-        edgeData['b'],
-        deserializeData3,
-      );
+      Node nodeAFromMap = nodeFromMap(edgeData['a'], deserializeData3);
+      Node nodeBFromMap = nodeFromMap(edgeData['b'], deserializeData3);
       EdgeExtra ee = EdgeExtra(isActive: edgeData['edgeExtra']['isActive']);
       Node nodeA = getNodeFromIndexLocal(nodeAFromMap.data.index)!;
       Node nodeB = getNodeFromIndexLocal(nodeBFromMap.data.index)!;
       Edge edge = Edge(nodeA, nodeB, ee);
       edges.add(edge);
       print('(FF1005)${nodeA}....${nodeB},,,,${edge}');
+    }
+    if (decodedJson.keys.contains('groups')) {
+      for (final groupData in decodedJson['groups']) {
+        Group group = groupFromMap(groupData);
+        groups.add(group);
+        print(
+          '(FH85)${groups.length}<<<<${group}....${group.name},,,,${group.nodeIndexes}',
+        );
+      }
     }
   }
 
@@ -253,21 +260,26 @@ class ForceDirectedGraph {
           .map(
             (e) => {
               'a': /*serializeData == null ? e.a.data :*/ /*serializeData(e.a.data)*/
-              {
-                'data': serializeData == null ? e.a.data : serializeData(e.a.data),
-                'position': {'x': e.a.position.x, 'y': e.a.position.y},
-              },
-              'b': /*serializeData == null ? e.b.data : *//*serializeData(e.a.data)*/
-              {
-                'data': serializeData == null ? e.b.data : serializeData(e.b.data),
-                'position': {'x': e.b.position.x, 'y': e.b.position.y},
-              },
+                  {
+                    'data': serializeData == null
+                        ? e.a.data
+                        : serializeData(e.a.data),
+                    'position': {'x': e.a.position.x, 'y': e.a.position.y},
+                  },
+              'b': /*serializeData == null ? e.b.data : */ /*serializeData(e.a.data)*/
+                  {
+                    'data': serializeData == null
+                        ? e.b.data
+                        : serializeData(e.b.data),
+                    'position': {'x': e.b.position.x, 'y': e.b.position.y},
+                  },
 
-             // 'b': serializeData == null ? e.b.data : serializeData(e.b.data),
+              // 'b': serializeData == null ? e.b.data : serializeData(e.b.data),
               'edgeExtra': e.edgeExtra.toJson(),
             },
           )
           .toList(),
+      'groups': groups.map((e) => e.toJson()).toList(),
     });
   }
 }
