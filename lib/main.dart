@@ -12,13 +12,13 @@ import 'package:appwrite/models.dart' as models;
 import 'dart:io';
 import 'dart:convert';
 
-const buildNumber = 15;
+const buildNumber = 16;
 const double arrowHeight = 7;
 const double arrowWidth = 7;
 const double lineWidth = 3;
 const double boxHeight = 25;
 const double chainYincrement = boxHeight + 10;
-const double charWidth = 8;
+const double charWidth = 10;
 const double boxPadding = 5;
 //NodeContents? edgeStartNodeContents;
 
@@ -124,10 +124,10 @@ String? getStringFromNodeKind(NodeKind? k) {
 enum NodeOperation {
   noop,
   illegal,
-  addDouble,
-  addDayToDate,
+  functionDouble,
+  functionDayToDate,
   latestDate,
-  addDoubleToString,
+  functionDoubleToString,
 }
 
 enum NodeFunction { nof, add, multiply, reciprocate }
@@ -353,7 +353,7 @@ void dumpGraph() {
   print('1');
   for (var node in _controller.graph.nodes) {
     print(
-      '(FFDN)--x>${node.position.x}--y>${node.position.y}>>>>${node.data.index}<<<<${node.data.input}££££${node.data.kind};;;;${node.data.doubleResult}::::${node.data.dateTimeResult}@@@@${node.data.stringResult}@@@@${(node.data.nodeFunction?? kNof).name}',
+      '(FFDN)--x>${node.position.x}--y>${node.position.y}>>>>${node.data.index}<<<<${node.data.input}££££${node.data.kind};;;;${node.data.doubleResult}::::${node.data.dateTimeResult}@@@@${node.data.stringResult}@@@@${(node.data.nodeFunction ?? kNof).name}',
     );
   }
   for (var edge in _controller.graph.edges) {
@@ -635,19 +635,19 @@ class _MyHomePageState extends State<MyHomePage> {
     if (!edgeExtra!.isActive!) return total;
     dynamic result = total;
     const Map<NodeKind, NodeOperation> mapADouble = {
-      kd: NodeOperation.addDouble,
-      kt: NodeOperation.addDayToDate,
-      ks: NodeOperation.addDoubleToString,
+      kd: NodeOperation.functionDouble,
+      kt: NodeOperation.functionDayToDate,
+      ks: NodeOperation.functionDoubleToString,
     };
     const Map<NodeKind, NodeOperation> mapADateTime = {
-      kd: NodeOperation.addDayToDate,
-      kt: NodeOperation.addDayToDate,
-      ks: NodeOperation.addDoubleToString,
+      kd: NodeOperation.functionDayToDate,
+      kt: NodeOperation.functionDayToDate,
+      ks: NodeOperation.functionDoubleToString,
     };
     const Map<NodeKind, NodeOperation> mapAString = {
-      kd: NodeOperation.addDouble,
-      kt: NodeOperation.addDayToDate,
-      ks: NodeOperation.addDoubleToString,
+      kd: NodeOperation.functionDouble,
+      kt: NodeOperation.functionDayToDate,
+      ks: NodeOperation.functionDoubleToString,
     };
 
     const Map<NodeKind, Map> aMap = {
@@ -668,16 +668,31 @@ class _MyHomePageState extends State<MyHomePage> {
     switch (op) {
       case (NodeOperation.noop):
         break;
-      case (NodeOperation.addDouble):
+      case (NodeOperation.functionDouble):
         result = 0.0;
         print(
           '(FF330A)${total}****${edge.a.data.doubleResult},,,,${result}....${edge.b.data.doubleResult}',
         );
-        result = (total ?? 0.0) + (edge.a.data.doubleResult ?? 0.0);
+        switch (edge.b.data.nodeFunction) {
+          case (kAdd):
+            result = (total ?? 0.0) + (edge.a.data.doubleResult ?? 0.0);
+            break;
+          case (kMultiply):
+            result = (total ?? 1.0) * (edge.a.data.doubleResult ?? 0.0);
+            break;
+          case (kReciprocate):
+            result = (total ?? 1.0) / (edge.a.data.doubleResult ?? 0.0);
+            break;
+          default:
+            print('(FH100)${edge.b.data.nodeFunction!.name}');
+            result = null;
+            break;
+        }
+
         //setControllerResult(index: edge.b.data.index, value: result);
         print('(FF330Z)${result}');
         break;
-      case (NodeOperation.addDayToDate):
+      case (NodeOperation.functionDayToDate):
         result = DateTime.now();
         if ((total is DateTime) && (edge.a.data.kind == kd)) {
           result = total.add(
@@ -709,7 +724,7 @@ class _MyHomePageState extends State<MyHomePage> {
         //setControllerResult(index: edge.b.data.index, value: result);
         print('(FG2)${edge.b.data.index},,,,${total}....${edge.a.data.kind}');
         break;
-      case (NodeOperation.addDoubleToString):
+      case (NodeOperation.functionDoubleToString):
         edge.b.data.stringResult =
             (edge.b.data.input ?? '') + (edge.a.data.stringResult ?? '');
         break;
@@ -1052,13 +1067,14 @@ class _MyHomePageState extends State<MyHomePage> {
                       ),
 
                       Container(
-                        width: 200,
+                        width: 300,
                         height: 34,
                         child: Row(
                           children: [
                             Text('Function: '),
+                            SizedBox(width: 10),
                             Container(
-                              width: 100,
+                              width: 120,
                               height: 30,
 
                               child: DropdownButton<NodeFunction>(
@@ -1078,7 +1094,10 @@ class _MyHomePageState extends State<MyHomePage> {
                                 elevation: 2,
                                 onChanged: (value) {
                                   setState(() {
-                                    setControllerNodeFunction(index: data.index, value: value);
+                                    setControllerNodeFunction(
+                                      index: data.index,
+                                      value: value,
+                                    );
                                   });
                                   setStateMain(() {});
                                   print(
@@ -1375,7 +1394,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       resultWidth = 50;
                       break;
                     case (kd):
-                      resultWidth = 40;
+                      resultWidth = 80;
                       break;
                     case (kt):
                       resultWidth = 150;
@@ -1406,9 +1425,19 @@ class _MyHomePageState extends State<MyHomePage> {
                         Container(
                           width: 24,
                           height: 24,
-                          child: Text(nodeFunctionSymbol[data.nodeFunction]?? '£'),
+
+                          child: Center(
+                            child: Text(
+                              nodeFunctionSymbol[data.nodeFunction] ?? '£',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                              ),
+                            ),
+                          ),
                           decoration: BoxDecoration(
-                            color: setBoxColor(data),
+                            color: Colors.black, //setBoxColor(data),
                             borderRadius: BorderRadius.circular(
                               (data.isDataEntry ?? false) ? 10 : 1,
                             ),
@@ -1416,7 +1445,7 @@ class _MyHomePageState extends State<MyHomePage> {
                           ),
                         ),
                         Container(
-                          width: boxWidth + (boxPadding * 2),
+                          width: boxWidth + (boxPadding * 2) + 30,
                           height: 24,
                           decoration: BoxDecoration(
                             color: setBoxColor(data),
@@ -1987,6 +2016,58 @@ class _MyHomePageState extends State<MyHomePage> {
                             groupName: chosenGroup.name,
                             value: false,
                           );
+                        });
+                        print(
+                          '(FH40)${chosenGroup.name}....${_controller.graph.groups}',
+                        );
+                        Navigator.of(context).pop();
+                      }
+                    },
+                  ),
+                  ElevatedButton(
+                    child: Text('Collapse group'),
+                    onPressed: () {
+                      if (chosenGroup == nullGroup) {
+                        toastification.show(
+                          context: context,
+                          title: Text('Select group'),
+                        );
+                      } else {
+                        double topY = -double.maxFinite;
+                        double topX = 0.0;
+                        int? topIndex;
+                        List<int> nodeIndexes = chosenGroup.nodeIndexes!;
+                        for (int i = 0; i < nodeIndexes.length; i++) {
+                          print(
+                            '(FH110)${topY}....${i},,,,${nodeIndexes}'
+                          );
+                          if (_controller
+                                  .graph
+                                  .nodes[nodeIndexes[i]]
+                                  .position
+                                  .y >
+                              topY) {
+                            topY = _controller
+                                .graph
+                                .nodes[nodeIndexes[i]]
+                                .position
+                                .y;
+                            topX = _controller
+                                .graph
+                                .nodes[nodeIndexes[i]]
+                                .position
+                                .x;
+                            topIndex = nodeIndexes[i];
+                          }
+                        }
+                        setState(() {
+                          for (int i = 0; i < nodeIndexes.length; i++) {
+                            setNodePosition(
+                              nodeIndexes[i],
+                              vector.Vector2(topX, topY),
+                            );
+                            print('(FH111)${i}....${nodeIndexes[i]}');
+                          }
                         });
                         print(
                           '(FH40)${chosenGroup.name}....${_controller.graph.groups}',
