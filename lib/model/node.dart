@@ -92,9 +92,9 @@ class Node {
     _velocity *= damping;
     position += _velocity * scaling;
     _force = Vector2.zero();
-    print('(FJ4)${data.index}....${position}');
+    print('(FJ4)${data.uid}....${position}');
     // if (data.kind == kg){
-    //   moveNodesInGroupWithGroupNode(data.index!);
+    //   moveNodesInGroupWithGroupNode(data.uid!);
     // }
 
     return true;

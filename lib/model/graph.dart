@@ -79,11 +79,11 @@ class ForceDirectedGraph {
     return node;
   }
 
-  Node? getNodeFromIndexLocal(int? index) {
-    print('(FF4020)${index}....${nodes.length}');
+  Node? getNodeFromIndexLocal(int? uid) {
+    print('(FF4020)${uid}....${nodes.length}');
     for (int i = 0; i < nodes.length; i++) {
-      print('(FF4021)${index}....${nodes[i].data.index},,,,${nodes[i]}');
-      if (index == nodes[i].data.index) {
+      print('(FF4021)${uid}....${nodes[i].data.uid},,,,${nodes[i]}');
+      if (uid == nodes[i].data.uid) {
         return nodes[i];
       }
     }
@@ -106,9 +106,9 @@ class ForceDirectedGraph {
     for (final nodeData in decodedJson['nodes']) {
       Node node = nodeFromMap(nodeData, deserializeData3);
       nodes.add(node);
-      // print('(FF1003A)${node}....${node.data!.index},,,,${node.data.kind}----${node.data.doubleResult}');
+      // print('(FF1003A)${node}....${node.data!.uid},,,,${node.data.kind}----${node.data.doubleResult}');
       print(
-        '(FF1003B)${nodes.length}<<<<${node}....${(node.data as NodeContents).index},,,,${node.position}',
+        '(FF1003B)${nodes.length}<<<<${node}....${(node.data as NodeContents).uid},,,,${node.position}',
       );
     }
     //The argument type 'NodeDataDeserializer<T>?' can't be assigned to the parameter type 'NodeDataDeserializer<Node<dynamic>>?'.
@@ -117,8 +117,8 @@ class ForceDirectedGraph {
       Node nodeAFromMap = nodeFromMap(edgeData['a'], deserializeData3);
       Node nodeBFromMap = nodeFromMap(edgeData['b'], deserializeData3);
       EdgeExtra ee = EdgeExtra(isActive: edgeData['edgeExtra']['isActive']);
-      Node nodeA = getNodeFromIndexLocal(nodeAFromMap.data.index)!;
-      Node nodeB = getNodeFromIndexLocal(nodeBFromMap.data.index)!;
+      Node nodeA = getNodeFromIndexLocal(nodeAFromMap.data.uid)!;
+      Node nodeB = getNodeFromIndexLocal(nodeBFromMap.data.uid)!;
       Edge edge = Edge(nodeA, nodeB, ee);
       edges.add(edge);
       print('(FF1005)${nodeA}....${nodeB},,,,${edge}');
@@ -128,7 +128,7 @@ class ForceDirectedGraph {
         Group group = groupFromMap(groupData);
         groups.add(group);
         print(
-          '(FH85)${groups.length}<<<<${group}....${group.name},,,,${group.nodeIndexes}',
+          '(FH85)${groups.length}<<<<${group}....${group.name},,,,${group.nodeUids}',
         );
       }
     }

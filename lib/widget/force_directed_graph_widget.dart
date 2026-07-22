@@ -451,7 +451,7 @@ class ForceDirectedGraphRenderObject extends RenderBox
         final moveOffset = Offset(node.position.x, -node.position.y);
         final finalOffset = -childCenter + moveOffset;
         print(
-          '(FH1)${node.data.index}....${moveOffset},,,,${finalOffset}++++${center.dx}****${center.dy}',
+          '(FH1)${node.data.uid}....${moveOffset},,,,${finalOffset}++++${center.dx}****${center.dy}',
         );
         context.paintChild(child, finalOffset);
 
@@ -470,7 +470,7 @@ class ForceDirectedGraphRenderObject extends RenderBox
         final moveOffset = Offset(edgeCenter.x, -edgeCenter.y);
         final finalOffset = -childCenter + moveOffset;
         print(
-          '(FH2)${edge.a.data.index}>>>>${edge.b.data.index}....${moveOffset},,,,${finalOffset}++++${center.dx}****${center.dy}',
+          '(FH2)${edge.a.data.uid}>>>>${edge.b.data.uid}....${moveOffset},,,,${finalOffset}++++${center.dx}****${center.dy}',
         );
         final angle = edgeAlwaysUp ? edge.angle : edge.rawAngle;
         context.canvas
@@ -493,7 +493,7 @@ class ForceDirectedGraphRenderObject extends RenderBox
           ..rotateZ(angle)
           ..translate(-childCenter.dx, -childCenter.dy);
         print(
-          '(FF3010)${edge.a.data.index}....${edge.b.data.index},,,,${edgeCenter}====${angle}',
+          '(FF3010)${edge.a.data.uid}....${edge.b.data.uid},,,,${edgeCenter}====${angle}',
         );
       } else {
         throw Exception('Unknown child'); // coverage:ignore-line

@@ -13,30 +13,30 @@ import 'dart:io';
 import 'dart:convert';
 
 
-void moveNodesInGroupWithGroupNode(int groupNodeIndex) {
-  print('(FJ7)${groupNodeIndex}');
+void moveNodesInGroupWithGroupNode(int groupNodeUid) {
+  print('(FJ7)${groupNodeUid}');
   if (_controller.graph.groups.length < 1) return;
   Group? group;
   for (int i = 0; i < _controller.graph.groups.length; i++) {
-    if (_controller.graph.groups[i].groupNodeIndex == groupNodeIndex) {
+    if (_controller.graph.groups[i].groupNodeUid == groupNodeUid) {
       group = _controller.graph.groups[i];
       break;
     }
   }
-  Node groupNode = getNodeFromIndex(groupNodeIndex)!;
+  Node groupNode = getNodeFromUid(groupNodeUid)!;
   vector.Vector2 groupNodePosition = groupNode.position!;
   if (group == null) return;
   for (int i = 0; i < _controller.graph.nodes.length; i++) {
-    int nodeIndex = _controller.graph.nodes[i].data.index!;
-    print('(FJ6)${i}....${nodeIndex},,,,${group.nodeIndexes}<<<<${groupNodePosition}');
-    if (group.nodeIndexes!.indexOf(nodeIndex) != -1) {
+    int nodeUid = _controller.graph.nodes[i].data.uid!;
+    print('(FJ6)${i}....${nodeUid},,,,${group.nodeUids}<<<<${groupNodePosition}');
+    if (group.nodeUids!.indexOf(nodeUid) != -1) {
       _controller.graph.nodes[i].position = groupNodePosition;
     }
   }
 }
 
 
-const buildNumber = 17;
+const buildNumber = 18;
 const double arrowHeight = 7;
 const double arrowWidth = 7;
 const double lineWidth = 3;
@@ -170,7 +170,7 @@ const Map<NodeFunction, String> nodeFunctionSymbol = {
 };
 
 class NodeContents {
-  int? index;
+  int? uid;
   NodeKind? kind;
   String? input;
   double? doubleResult;
@@ -186,7 +186,7 @@ class NodeContents {
   // text: '',
   // );
   NodeContents({
-    required this.index,
+    required this.uid,
     required this.kind,
     this.input,
     this.doubleResult,
@@ -201,7 +201,7 @@ class NodeContents {
 
   Map<String, dynamic> toJson() {
     Map<String, dynamic> m = {
-      'index': index,
+      'uid': uid,
       'kind': getStringFromNodeKind(kind),
       'input': input,
       'doubleResult': doubleResult,
@@ -213,13 +213,13 @@ class NodeContents {
       'isDataEntry': isDataEntry,
       'nodeFunction': nodeFunction!.name,
     };
-    //1print('(FF750)${this.index}....${this.kind},,,,${m}');
+    //1print('(FF750)${this.uid}....${this.kind},,,,${m}');
     return m;
   }
 
   /*NodeContents.fromJson(Map<String, dynamic> json)
-    : index = (json['index'] as num?)?.toInt(),
-      //json['index'] as int,
+    : uid = (json['uid'] as num?)?.toInt(),
+      //json['uid'] as int,
       kind = getNodeKindFromString(json['kind']),
       //json['kind'] as NodeKind,
       input = json['input'] as String,
@@ -232,7 +232,7 @@ class NodeContents {
       isEndNode = json['isEndNode'] as bool;*/
 
   factory NodeContents.fromJson(Map<String, dynamic> json) => NodeContents(
-    index: json["index"] as int,
+    uid: json["uid"] as int,
     kind: getNodeKindFromString(json['kind'])!,
     input: json["input"] as String,
     doubleResult: json["doubleResult"] as double,
@@ -258,7 +258,7 @@ class NodeContents {
 
   factory NodeContents.nodeContentsfromJson(Map<String, dynamic> json) {
     return NodeContents(
-      index: (json['index'] as num?)?.toInt(), //json['index'] as int,
+      uid: (json['uid'] as num?)?.toInt(), //json['uid'] as int,
       kind: getNodeKindFromString(json['kind']), //json['kind'] as NodeKind,
       input: json['input'] as String,
       doubleResult: (json['doubleResult'] as num?)
@@ -283,9 +283,9 @@ NodeContents deserializeNodeContents(dynamic d) {
   if (nd == null) {
     nd = dd;
   }
-  print('(FF1005C)${nd['index']}++++${nd['kind']}');
+  print('(FF1005C)${nd['uid']}++++${nd['kind']}');
   return NodeContents(
-    index: nd['index'],
+    uid: nd['uid'],
     kind: getNodeKindFromString(nd['kind']) ?? kd,
     input: nd['input'],
     doubleResult: nd['doubleResult'],
@@ -307,44 +307,44 @@ Group deserializeGroupContents(dynamic d) {
 
   return Group(
     name: dd['name'],
-    nodeIndexes: getNodeIndexesFromString(dd['nodeIndexes']),
+    nodeUids: getNodeUidsFromString(dd['nodeUids']),
     isVisible: dd['input'],
   );
 }
 
 class Spreadsheet {}
 
-List<int> getNodeIndexesFromString(String s) {
+List<int> getNodeUidsFromString(String s) {
   List<int> ni = [];
   List<String> ss = s.split(',');
   for (int i = 0; i < ss.length; i++) {
-    int? index = int.tryParse(ss[i]);
-    if (index != null) {
-      ni.add(index);
+    int? uid = int.tryParse(ss[i]);
+    if (uid != null) {
+      ni.add(uid);
     }
   }
   return ni;
 }
 
-final Group nullGroup = Group(name: '', nodeIndexes: [], isVisible: false);
+final Group nullGroup = Group(name: '', nodeUids: [], isVisible: false);
 
 Group groupFromMap(Map<String, dynamic> groupMap) {
-  String nodeIndexesString = groupMap['nodeIndexes'];
+  String nodeUidsString = groupMap['nodeUids'];
 
-  List<String> nodeIndexesStringList = nodeIndexesString.split(',');
-  List<int> nodeIndexesList = [];
-  for (int i = 0; i < nodeIndexesStringList.length; i++) {
-    nodeIndexesList.add(int.tryParse(nodeIndexesStringList[i]) ?? -1);
+  List<String> nodeUidsStringList = nodeUidsString.split(',');
+  List<int> nodeUidsList = [];
+  for (int i = 0; i < nodeUidsStringList.length; i++) {
+    nodeUidsList.add(int.tryParse(nodeUidsStringList[i]) ?? -1);
   }
   print('(FH86)${groupMap}....');
   Group group = Group(
     name: groupMap['name'],
-    nodeIndexes: nodeIndexesList,
+    nodeUids: nodeUidsList,
     isVisible: groupMap['isVisible'],
-    groupNodeIndex: groupMap['groupNodeIndex'],
+    groupNodeUid: groupMap['groupNodeUid'],
   );
   print(
-    '(FH1002)${nodeIndexesString}....${groupMap},,,,${nodeIndexesList}====${group}',
+    '(FH1002)${nodeUidsString}....${groupMap},,,,${nodeUidsList}====${group}',
   );
   return group;
 }
@@ -371,10 +371,10 @@ void loadGroupsFromJson(String json) {
   }
 }
 
-Group? getGroupFromNodeIndex(int? nodeIndex) {
-  if (nodeIndex == null) return null;
+Group? getGroupFromNodeUid(int? nodeUid) {
+  if (nodeUid == null) return null;
   for (int i = 0; i < _controller.graph.groups.length; i++) {
-    if (nodeIndex == _controller.graph.groups[i].groupNodeIndex) {
+    if (nodeUid == _controller.graph.groups[i].groupNodeUid) {
       return _controller.graph.groups[i];
     }
   }
@@ -389,12 +389,12 @@ void dumpGraph() {
   print('1');
   for (var node in _controller.graph.nodes) {
     print(
-      '(FFDN)--x>${node.position.x}--y>${node.position.y}>>>>${node.data.index}<<<<${node.data.input}££££${node.data.kind};;;;${node.data.doubleResult}::::${node.data.dateTimeResult}@@@@${node.data.stringResult}@@@@${(node.data.nodeFunction ?? kNof).name}',
+      '(FFDN)--x>${node.position.x}--y>${node.position.y}>>>>${node.data.uid}<<<<${node.data.input}££££${node.data.kind};;;;${node.data.doubleResult}::::${node.data.dateTimeResult}@@@@${node.data.stringResult}@@@@${(node.data.nodeFunction ?? kNof).name}',
     );
   }
   for (var edge in _controller.graph.edges) {
     print(
-      '(FFDE)${edge.a.data.index}${edge.a.data.kind}....${edge.b.data.index}${edge.b.data.kind},,,,${edge.edgeExtra.isActive}',
+      '(FFDE)${edge.a.data.uid}${edge.a.data.kind}....${edge.b.data.uid}${edge.b.data.kind},,,,${edge.edgeExtra.isActive}',
     );
     print(
       '(FFDF)${edge.a.position}||||${edge.a.mass}....${edge.b.position}!!!!${edge.b.mass},,,,${edge.distance}????${edge.angle}',
@@ -402,52 +402,52 @@ void dumpGraph() {
   }
   for (int i = 0; i < _controller.graph.groups.length; i++) {
     print(
-      '(FFDG)${_controller.graph.groups[i].name}....${_controller.graph.groups[i].nodeIndexes},,,,${_controller.graph.groups[i].isVisible}||||${_controller.graph.groups[i].groupNodeIndex}',
+      '(FFDG)${_controller.graph.groups[i].name}....${_controller.graph.groups[i].nodeUids},,,,${_controller.graph.groups[i].isVisible}||||${_controller.graph.groups[i].groupNodeUid}',
     );
   }
 }
 
 
 
-int? getEdgeIntegerFromNodeIndexes({int? indexA, int? indexB}) {
+int? getEdgeIntegerFromNodeUids({int? uidA, int? uidB}) {
   for (int i = 0; i < _controller.graph.edges.length; i++) {
-    if ((_controller.graph.edges[i].a.data.index == indexA) &&
-        (_controller.graph.edges[i].b.data.index == indexB)) {
+    if ((_controller.graph.edges[i].a.data.uid == uidA) &&
+        (_controller.graph.edges[i].b.data.uid == uidB)) {
       return i;
     }
   }
   return null;
 }
 
-EdgeExtra? getEdgeExtraFromNodeIndexes({int? indexA, int? indexB}) {
-  int? i = getEdgeIntegerFromNodeIndexes(indexA: indexA, indexB: indexB);
+EdgeExtra? getEdgeExtraFromNodeUids({int? uidA, int? uidB}) {
+  int? i = getEdgeIntegerFromNodeUids(uidA: uidA, uidB: uidB);
   if (i == null) return null;
   return _controller.graph.edges[i].edgeExtra;
 }
 
-Node? getNodeFromIndex(int? index) {
-  print('(FF3020)${index}....${_controller.graph.nodes.length}');
+Node? getNodeFromUid(int? uid) {
+  print('(FF3020)${uid}....${_controller.graph.nodes.length}');
   for (int i = 0; i < _controller.graph.nodes.length; i++) {
     print(
-      '(FF3021)${index}....${_controller.graph.nodes[i].data.index},,,,${_controller.graph.nodes[i]}',
+      '(FF3021)${uid}....${_controller.graph.nodes[i].data.uid},,,,${_controller.graph.nodes[i]}',
     );
-    if (index == _controller.graph.nodes[i].data.index) {
+    if (uid == _controller.graph.nodes[i].data.uid) {
       return _controller.graph.nodes[i];
     }
   }
   return null;
 }
 
-bool isEdgeActive({int? indexA, int? indexB}) {
+bool isEdgeActive({int? uidA, int? uidB}) {
   //1print(
-  //1 '(FF760)${indexA}....${indexB},,,,${getEdgeExtra(indexA: indexA, indexB: indexB)}',
+  //1 '(FF760)${uidA}....${uidB},,,,${getEdgeExtra(uidA: uidA, uidB: uidB)}',
   //1 );
-  EdgeExtra? ee = getEdgeExtraFromNodeIndexes(indexA: indexA, indexB: indexB);
+  EdgeExtra? ee = getEdgeExtraFromNodeUids(uidA: uidA, uidB: uidB);
   return ee!.isActive!;
 }
 
-void setEdgeExtraIsActive({int? indexA, int? indexB, bool? isActive = true}) {
-  int? i = getEdgeIntegerFromNodeIndexes(indexA: indexA, indexB: indexB);
+void setEdgeExtraIsActive({int? uidA, int? uidB, bool? isActive = true}) {
+  int? i = getEdgeIntegerFromNodeUids(uidA: uidA, uidB: uidB);
   if (i == null) return;
   _controller.graph.edges[i].edgeExtra.isActive = isActive;
 }
@@ -460,7 +460,7 @@ void addEdgeByData({
   _controller.addEdgeByData(nodeA!, nodeB!, EdgeExtra(isActive: isActive));
 
   print(
-    '(FF761)${nodeA.index}....${nodeB.index},,,,${isActive}++++${getEdgeExtraFromNodeIndexes(indexA: nodeA.index, indexB: nodeB.index)!.isActive})}',
+    '(FF761)${nodeA.uid}....${nodeB.uid},,,,${isActive}++++${getEdgeExtraFromNodeUids(uidA: nodeA.uid, uidB: nodeB.uid)!.isActive})}',
   );
   //dumpGraph();
 }
@@ -472,7 +472,7 @@ void deleteEdgeByData({
   _controller.deleteEdgeByData(nodeA!, nodeB!);
 }
 
-int _indexIndex = 0;
+int _uidMaster = 0;
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
@@ -508,7 +508,7 @@ class _MyHomePageState extends State<MyHomePage> {
     super.initState();
     initAppwrite();
 
-    _indexIndex = 0;
+    _uidMaster = 0;
     _controller =
         ForceDirectedGraphController(
           graph: ForceDirectedGraph.generateNTree(
@@ -519,7 +519,7 @@ class _MyHomePageState extends State<MyHomePage> {
             generator: () {
               return NodeContents(
                 kind: kd,
-                index: _indexIndex++,
+                uid: _uidMaster++,
                 input: '',
                 isDataEntry: false,
                 nodeFunction: NodeFunction.add,
@@ -536,7 +536,7 @@ class _MyHomePageState extends State<MyHomePage> {
         });
 
     WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
-      //1print('(FF600)${_indexIndex}');
+
       _controller.needUpdate();
     });
   }
@@ -547,19 +547,19 @@ class _MyHomePageState extends State<MyHomePage> {
     super.dispose();
   }
 
-  NodeContents? getNodeContentsFromIndex(int index) {
+  NodeContents? getNodeContentsFromUid(int uid) {
     for (int i = 0; i < _controller.graph.nodes.length; i++) {
-      if (_controller.graph.nodes[i].data.index == index) {
+      if (_controller.graph.nodes[i].data.uid == uid) {
         return _controller.graph.nodes[i].data;
       }
     }
     return null;
   }
 
-  void setControllerResult({int? index, dynamic value}) {
-    //1print('(FF331)${index}....${value}');
+  void setControllerResult({int? uid, dynamic value}) {
+    //1print('(FF331)${uid}....${value}');
     for (int i = 0; i < _controller.graph.nodes.length; i++) {
-      if (_controller.graph.nodes[i].data.index == index) {
+      if (_controller.graph.nodes[i].data.uid == uid) {
         if (value is double) {
           _controller.graph.nodes[i].data.doubleResult = value;
         } else {
@@ -572,73 +572,73 @@ class _MyHomePageState extends State<MyHomePage> {
           }
         }
         //1print(
-        //1 '(FF332)${_controller.graph.nodes[i].data.index}++++${_controller.graph.nodes[i].data.doubleResult}....${_controller.graph.nodes[i].data.dateTimeResult},,,,${_controller.graph.nodes[i].data.stringResult}',
+        //1 '(FF332)${_controller.graph.nodes[i].data.uid}++++${_controller.graph.nodes[i].data.doubleResult}....${_controller.graph.nodes[i].data.dateTimeResult},,,,${_controller.graph.nodes[i].data.stringResult}',
         //1);
         break;
       }
     }
   }
 
-  void setControllerInput({int? index, dynamic value}) {
+  void setControllerInput({int? uid, dynamic value}) {
     for (int i = 0; i < _controller.graph.nodes.length; i++) {
-      if (_controller.graph.nodes[i].data.index == index) {
+      if (_controller.graph.nodes[i].data.uid == uid) {
         _controller.graph.nodes[i].data.input = value;
         break;
       }
     }
   }
 
-  void setControllerIsStartNode({int? index, bool? value}) {
+  void setControllerIsStartNode({int? uid, bool? value}) {
     for (int i = 0; i < _controller.graph.nodes.length; i++) {
-      if (_controller.graph.nodes[i].data.index == index) {
+      if (_controller.graph.nodes[i].data.uid == uid) {
         _controller.graph.nodes[i].data.isStartNode = value;
         break;
       }
     }
   }
 
-  void setControllerIsEndNode({int? index, bool? value}) {
+  void setControllerIsEndNode({int? uid, bool? value}) {
     for (int i = 0; i < _controller.graph.nodes.length; i++) {
-      if (_controller.graph.nodes[i].data.index == index) {
+      if (_controller.graph.nodes[i].data.uid == uid) {
         _controller.graph.nodes[i].data.isEndNode = value;
         break;
       }
     }
   }
 
-  void setControllerIsDataEntry({int? index, bool? value}) {
-    print('(FG7)${index}....${value}');
+  void setControllerIsDataEntry({int? uid, bool? value}) {
+    print('(FG7)${uid}....${value}');
     for (int i = 0; i < _controller.graph.nodes.length; i++) {
-      if (_controller.graph.nodes[i].data.index == index) {
+      if (_controller.graph.nodes[i].data.uid == uid) {
         _controller.graph.nodes[i].data.isDataEntry = value;
-        print('(FG8)${index}....${value}');
+        print('(FG8)${uid}....${value}');
         break;
       }
     }
   }
 
-  void setControllerIsHighlight({int? index, bool? value}) {
+  void setControllerIsHighlight({int? uid, bool? value}) {
     for (int i = 0; i < _controller.graph.nodes.length; i++) {
-      if (_controller.graph.nodes[i].data.index == index) {
+      if (_controller.graph.nodes[i].data.uid == uid) {
         _controller.graph.nodes[i].data.isHighlight = value;
         break;
       }
     }
   }
 
-  void setControllerNodeFunction({int? index, NodeFunction? value}) {
+  void setControllerNodeFunction({int? uid, NodeFunction? value}) {
     for (int i = 0; i < _controller.graph.nodes.length; i++) {
-      if (_controller.graph.nodes[i].data.index == index) {
+      if (_controller.graph.nodes[i].data.uid == uid) {
         _controller.graph.nodes[i].data.nodeFunction = value;
         break;
       }
     }
   }
 
-  vector.Vector2? getNodePosition(int? index) {
+  vector.Vector2? getNodePosition(int? uid) {
     vector.Vector2? pos;
     for (var node in _controller.graph.nodes) {
-      if (node.data.index == index) {
+      if (node.data.uid == uid) {
         pos = node.position;
         break;
       }
@@ -646,19 +646,19 @@ class _MyHomePageState extends State<MyHomePage> {
     return pos;
   }
 
-  setNodePosition(int? index, vector.Vector2 pos) {
+  setNodePosition(int? uid, vector.Vector2 pos) {
     for (int i = 0; i < _controller.graph.nodes.length; i++) {
-      if (_controller.graph.nodes[i].data.index == index) {
-        print('(FI42)${index}....${getNodePosition(index)}');
+      if (_controller.graph.nodes[i].data.uid == uid) {
+        print('(FI42)${uid}....${getNodePosition(uid)}');
         _controller.graph.nodes[i].position = pos;
         break;
       }
     }
   }
 
-  void setControllerKind({int? index, NodeKind? kind}) {
+  void setControllerKind({int? uid, NodeKind? kind}) {
     for (var node in _controller.graph.nodes) {
-      if (node.data.index == index) {
+      if (node.data.uid == uid) {
         node.data.kind = kind;
         break;
       }
@@ -666,9 +666,9 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   dynamic processEdge({dynamic total, Edge? edge, isFirstEdge = false}) {
-    EdgeExtra? edgeExtra = getEdgeExtraFromNodeIndexes(
-      indexA: edge!.a.data.index,
-      indexB: edge.b.data.index,
+    EdgeExtra? edgeExtra = getEdgeExtraFromNodeUids(
+      uidA: edge!.a.data.uid,
+      uidB: edge.b.data.uid,
     );
     if (!edgeExtra!.isActive!) return total;
     dynamic result = total;
@@ -727,7 +727,7 @@ class _MyHomePageState extends State<MyHomePage> {
             break;
         }
 
-        //setControllerResult(index: edge.b.data.index, value: result);
+        //setControllerResult(uid: edge.b.data.uid, value: result);
         print('(FF330Z)${result}');
         break;
       case (NodeOperation.functionDayToDate):
@@ -743,10 +743,10 @@ class _MyHomePageState extends State<MyHomePage> {
           if ((total is double) &&
               (edge.a.data.kind == kt) &&
               (edge.edgeExtra.isActive!)) {
-            setControllerKind(index: edge.b.data.index, kind: kt);
+            setControllerKind(uid: edge.b.data.uid, kind: kt);
             if (edge.a.data.dateTimeResult == null) {
               setControllerResult(
-                index: edge.b.data.index,
+                uid: edge.b.data.uid,
                 value: DateTime.now(),
               );
             } else {
@@ -756,11 +756,11 @@ class _MyHomePageState extends State<MyHomePage> {
             }
           } else {
             result = null;
-            setControllerKind(index: edge.b.data.index, kind: kd);
+            setControllerKind(uid: edge.b.data.uid, kind: kd);
           }
         }
-        //setControllerResult(index: edge.b.data.index, value: result);
-        print('(FG2)${edge.b.data.index},,,,${total}....${edge.a.data.kind}');
+        //setControllerResult(uid: edge.b.data.uid, value: result);
+        print('(FG2)${edge.b.data.uid},,,,${total}....${edge.a.data.kind}');
         break;
       case (NodeOperation.functionDoubleToString):
         edge.b.data.stringResult =
@@ -796,9 +796,9 @@ class _MyHomePageState extends State<MyHomePage> {
     //dumpGraph();
     for (var edge in _controller.graph.edges) {
       //1print(
-      //1  '(FF5)${nodeContents.index}----${nodeContents.kind}++++${edge.a.data.index}....${edge.a.data.kind}>>>>${edge.b.data.index},,,,${edge.b.data.kind}',
+      //1  '(FF5)${nodeContents.uid}----${nodeContents.kind}++++${edge.a.data.uid}....${edge.a.data.kind}>>>>${edge.b.data.uid},,,,${edge.b.data.kind}',
       //1);
-      if (edge.b.data.index == nodeContents.index) {
+      if (edge.b.data.uid == nodeContents.uid) {
         //1print('(FF51)${nodeContents.kind}');
         Node? nn;
         nn = edge.a;
@@ -809,10 +809,10 @@ class _MyHomePageState extends State<MyHomePage> {
       }
     }
     if (edgeFound) {
-      setControllerResult(index: nodeContents.index, value: total);
+      setControllerResult(uid: nodeContents.uid, value: total);
     } else {
       setControllerResult(
-        index: nodeContents.index,
+        uid: nodeContents.uid,
         value: double.tryParse(nodeContents.input ?? '') ?? 0.0,
       );
       total = double.tryParse(nodeContents.input ?? '') ?? 0.0;
@@ -822,7 +822,7 @@ class _MyHomePageState extends State<MyHomePage> {
         return '1ERROR 1';
       case (kg):
         final String groupName =
-            (getGroupFromNodeIndex(nodeContents.index)!.name) ?? 'NO Group';
+            (getGroupFromNodeUid(nodeContents.uid)!.name) ?? 'NO Group';
         return 'G: ' + groupName;
       case (kd):
         return total.toString();
@@ -858,7 +858,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Color setBoxColor(NodeContents node) {
-    //1print('(FF202)${node.index}....${node.isStartNode},,,,${node.isEndNode}');
+    //1print('(FF202)${node.uid}....${node.isStartNode},,,,${node.isEndNode}');
     if (node.isStartNode ?? false) {
       return Colors.pinkAccent;
     }
@@ -885,12 +885,12 @@ class _MyHomePageState extends State<MyHomePage> {
     String passiveEdgeResult = '';
     for (int i = 0; i < _controller.graph.edges.length; i++) {
       print(
-        '(FH7)${_controller.graph.edges[i].a.data.index}....${_controller.graph.edges[i].b.data.index}',
+        '(FH7)${_controller.graph.edges[i].a.data.uid}....${_controller.graph.edges[i].b.data.uid}',
       );
-      if ((_controller.graph.edges[i].b.data.index == data.index) &&
+      if ((_controller.graph.edges[i].b.data.uid == data.uid) &&
           (!_controller.graph.edges[i].edgeExtra.isActive!)) {
         print(
-          '(FH8)${_controller.graph.edges[i].a.data.index}....${_controller.graph.edges[i].a!.data.kind}',
+          '(FH8)${_controller.graph.edges[i].a.data.uid}....${_controller.graph.edges[i].a!.data.kind}',
         );
         switch (_controller.graph.edges[i].a!.data.kind) {
           case ke:
@@ -928,10 +928,10 @@ class _MyHomePageState extends State<MyHomePage> {
     for (int i = 0; i < _controller.graph.groups.length; i++) {
       for (
         int j = 0;
-        j < _controller.graph.groups[i].nodeIndexes!.length;
+        j < _controller.graph.groups[i].nodeUids!.length;
         j++
       ) {
-        if (_controller.graph.groups[i].nodeIndexes![j] == data.index) {
+        if (_controller.graph.groups[i].nodeUids![j] == data.uid) {
           groupStringList =
               '${groupStringList}, ${_controller.graph.groups[i].name!}';
         }
@@ -961,21 +961,21 @@ class _MyHomePageState extends State<MyHomePage> {
                     onPressed: () {
                       String value = dataEntryController!.text;
                       // double? doubleValue = double.tryParse(value);
-                      print('(FH5)${value}++++${data.index}');
+                      print('(FH5)${value}++++${data.uid}');
                       double? doubleValue = double.tryParse(value);
                       setState(() {
                         if (doubleValue == null) {
-                          setControllerKind(index: data.index, kind: ks);
+                          setControllerKind(uid: data.uid, kind: ks);
                         } else {
-                          setControllerKind(index: data.index, kind: kd);
+                          setControllerKind(uid: data.uid, kind: kd);
                           double? doubleValue = double.tryParse(value);
-                          setControllerInput(index: data.index, value: value);
+                          setControllerInput(uid: data.uid, value: value);
                           setControllerResult(
-                            index: data.index,
+                            uid: data.uid,
                             value: doubleValue ?? 'Y',
                           );
                         }
-                        setControllerInput(index: data.index, value: value);
+                        setControllerInput(uid: data.uid, value: value);
                       });
                       Navigator.of(context).pop();
                     },
@@ -985,11 +985,11 @@ class _MyHomePageState extends State<MyHomePage> {
                     onPressed: () {
                       setState(() {
                         setControllerIsDataEntry(
-                          index: data.index,
+                          uid: data.uid,
                           value: false,
                         );
                       });
-                      setControllerIsDataEntry(index: data.index, value: false);
+                      setControllerIsDataEntry(uid: data.uid, value: false);
                       Navigator.of(context).pop();
                       showStandardDialog(data);
                     },
@@ -1038,15 +1038,15 @@ class _MyHomePageState extends State<MyHomePage> {
                         onPressed: () {
                           String value = textEditingController!.text;
                           // double? doubleValue = double.tryParse(value);
-                          //1print('(FF11)${value}++++${data.index}');
+                          //1print('(FF11)${value}++++${data.uid}');
                           double? doubleValue = double.tryParse(value);
                           setState(() {
                             if (doubleValue == null) {
-                              setControllerKind(index: data.index, kind: ks);
+                              setControllerKind(uid: data.uid, kind: ks);
                             } else {
-                              setControllerKind(index: data.index, kind: kd);
+                              setControllerKind(uid: data.uid, kind: kd);
                             }
-                            setControllerInput(index: data.index, value: value);
+                            setControllerInput(uid: data.uid, value: value);
                           });
                           Navigator.of(context).pop();
                         },
@@ -1056,7 +1056,7 @@ class _MyHomePageState extends State<MyHomePage> {
                         onPressed: () async {
                           setState(() {
                             setControllerIsDataEntry(
-                              index: data.index,
+                              uid: data.uid,
                               value: true,
                             );
                           });
@@ -1066,17 +1066,17 @@ class _MyHomePageState extends State<MyHomePage> {
                       ElevatedButton(
                         child: const Text('Enter date'),
                         onPressed: () async {
-                          setControllerKind(index: data.index, kind: kt);
+                          setControllerKind(uid: data.uid, kind: kt);
                           DateTime? d = await selectDate();
                           setState(() {
                             if (d == null) {
                               setControllerInput(
-                                index: data.index,
+                                uid: data.uid,
                                 value: null,
                               );
                             } else {
                               setControllerInput(
-                                index: data.index,
+                                uid: data.uid,
                                 value: dateToString(d),
                               );
                             }
@@ -1098,13 +1098,13 @@ class _MyHomePageState extends State<MyHomePage> {
                             nodeA: data,
                             nodeB: NodeContents(
                               kind: kd,
-                              index: _indexIndex,
+                              uid: _uidMaster,
                               input: '',
                               isDataEntry: false,
                               nodeFunction: NodeFunction.add,
                             ),
                           );
-                          _indexIndex++;
+                          _uidMaster++;
                           // _nodes.clear();
                           // _edges.clear();
                           Navigator.of(context).pop();
@@ -1140,13 +1140,13 @@ class _MyHomePageState extends State<MyHomePage> {
                                 onChanged: (value) {
                                   setState(() {
                                     setControllerNodeFunction(
-                                      index: data.index,
+                                      uid: data.uid,
                                       value: value,
                                     );
                                   });
                                   setStateMain(() {});
                                   print(
-                                    '(FH90)${value!.name}....${value.index}',
+                                    '(FH90)${value!.name}',
                                   );
                                 },
                                 isExpanded: true,
@@ -1165,7 +1165,7 @@ class _MyHomePageState extends State<MyHomePage> {
                         onPressed: () {
                           setState(() {
                             //1print('(FF410)');
-                            setControllerInput(index: data.index, value: '');
+                            setControllerInput(uid: data.uid, value: '');
                           });
                           Navigator.of(context).pop();
                         },
@@ -1174,8 +1174,8 @@ class _MyHomePageState extends State<MyHomePage> {
                         child: const Text('Delete node'),
                         onPressed: () {
                           setState(() {
-                            //1print('(FF411)${data.index}');
-                            if (data.index == 0) {
+                            //1print('(FF411)${data.uid}');
+                            if (data.uid == 0) {
                               toastification.show(
                                 context: context,
                                 title: Text('Cannot delete first node'),
@@ -1186,12 +1186,12 @@ class _MyHomePageState extends State<MyHomePage> {
                                 i < _controller.graph.edges.length;
                                 i++
                               ) {
-                                if ((_controller.graph.edges[i].a.data.index ==
-                                        data.index) ||
-                                    (_controller.graph.edges[i].b.data.index ==
-                                        data.index)) {
+                                if ((_controller.graph.edges[i].a.data.uid ==
+                                        data.uid) ||
+                                    (_controller.graph.edges[i].b.data.uid ==
+                                        data.uid)) {
                                   //1print(
-                                  //1      '(FF412)${_controller.graph.edges[i].a.data.index}....${_controller.graph.edges[i].b.data.index}',
+                                  //1      '(FF412)${_controller.graph.edges[i].a.data.uid}....${_controller.graph.edges[i].b.data.uid}',
                                   //1 );
                                   /*_controller.*/
                                   deleteEdgeByData(
@@ -1199,11 +1199,11 @@ class _MyHomePageState extends State<MyHomePage> {
                                     nodeB: _controller.graph.edges[i].a.data,
                                   );
                                 }
-                                //1print('(FF413)${data.index}');
+                                //1print('(FF413)${data.uid}');
                                 _controller.deleteNodeByData(data);
                               }
                               setControllerInput(
-                                index: data.index,
+                                uid: data.uid,
                                 value: null,
                               );
                             }
@@ -1221,7 +1221,7 @@ class _MyHomePageState extends State<MyHomePage> {
                           setState(() {
                             //1print('(FF16)');
                             setControllerIsStartNode(
-                              index: data.index!,
+                              uid: data.uid!,
                               value: true,
                             );
                           });
@@ -1237,7 +1237,7 @@ class _MyHomePageState extends State<MyHomePage> {
                           setState(() {
                             //1print('(FF16)');
                             setControllerIsEndNode(
-                              index: data.index!,
+                              uid: data.uid!,
                               value: true,
                             );
                           });
@@ -1260,7 +1260,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     onPressed: () {
                       setState(() {
                         setControllerIsHighlight(
-                          index: data.index!,
+                          uid: data.uid!,
                           value: true,
                         );
                       });
@@ -1274,13 +1274,13 @@ class _MyHomePageState extends State<MyHomePage> {
                     onPressed: () {
                       //1print('(FF700)');
                       NodeContents currentNodeContents = data;
-                      double rootNodeX = getNodePosition(data.index)!.x;
-                      double rootNodeY = getNodePosition(data.index)!.y;
+                      double rootNodeX = getNodePosition(data.uid)!.x;
+                      double rootNodeY = getNodePosition(data.uid)!.y;
                       int? replicationCount =
                           int.tryParse(textEditingController!.text) ?? 1;
                       for (int i = 0; i < replicationCount; i++) {
                         NodeContents nextNodeContents = NodeContents(
-                          index: _indexIndex,
+                          uid: _uidMaster,
                           kind: currentNodeContents.kind,
                           isDataEntry: false,
                           nodeFunction: NodeFunction.add,
@@ -1295,12 +1295,12 @@ class _MyHomePageState extends State<MyHomePage> {
                           rootNodeY - ((i.toDouble() + 1) * chainYincrement),
                         );
                         //1print('(FF747)${rootNodeX}....${rootNodeY},,,,${nextPos}');
-                        setNodePosition(nextNodeContents.index, nextPos);
+                        setNodePosition(nextNodeContents.uid, nextPos);
                         setControllerInput(
-                          index: nextNodeContents.index,
+                          uid: nextNodeContents.uid,
                           value: currentNodeContents.input,
                         );
-                        _indexIndex++;
+                        _uidMaster++;
                         currentNodeContents = nextNodeContents;
                       }
 
@@ -1317,7 +1317,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void onNodeTap(NodeContents data) {
-    print('(FH6)${data.index}....${data.isDataEntry}');
+    print('(FH6)${data.uid}....${data.isDataEntry}');
     if (data.isDataEntry ?? false) {
       showDataEntryDialog(data);
     } else {
@@ -1325,25 +1325,25 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  bool isIndexEqual(NodeContents? n1, NodeContents? n2) {
+  bool isUidEqual(NodeContents? n1, NodeContents? n2) {
     if ((n1 == null) || (n2 == null)) return false;
-    if (n1.index == n2.index) return true;
+    if (n1.uid == n2.uid) return true;
     return false;
   }
 
   Widget drawNode(NodeContents data) {
-    //1print('(FF430)${data.index}');
+    //1print('(FF430)${data.uid}');
     if (data.isDataEntry ?? false) {
       return Text((data.doubleResult ?? '').toString());
     } else {
       String inputString = data.input ?? '';
-      print('(FG6)${data.index}....${data.kind}');
+      print('(FG6)${data.uid}....${data.kind}');
       switch (data.kind) {
         case (ke):
           return Text('ERROR}....${inputString}>${getResult(data)}');
         case (kg):
           final String groupName =
-              (getGroupFromNodeIndex(data.index)!.name) ?? 'NO Group';
+              (getGroupFromNodeUid(data.uid)!.name) ?? 'NO Group';
           return Text('G: ' + groupName);
         case (kd):
           return Text('${inputString}>${getResult(data)}');
@@ -1357,16 +1357,16 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  bool isVisibleAnyGroupsNode({int? nodeIndex}) {
+  bool isVisibleAnyGroupsNode({int? nodeUid}) {
     bool inGroup = false;
     bool isVisible = false;
     for (int i = 0; i < _controller.graph.groups.length; i++) {
       for (
         int j = 0;
-        j < _controller.graph.groups[i].nodeIndexes!.length;
+        j < _controller.graph.groups[i].nodeUids!.length;
         j++
       ) {
-        if (_controller.graph.groups[i].nodeIndexes![j] == nodeIndex) {
+        if (_controller.graph.groups[i].nodeUids![j] == nodeUid) {
           inGroup = true;
           if (_controller.graph.groups[i].isVisible!) {
             isVisible = true;
@@ -1403,24 +1403,24 @@ class _MyHomePageState extends State<MyHomePage> {
                   });
                 },
                 onDraggingUpdate: (NodeContents data) {
-                  debugPrint('(FJ1)${data.index}');
+                  debugPrint('(FJ1)${data.uid}');
                 },
                 nodesBuilder: (context, NodeContents data) {
                   Color color;
-                  if (!isVisibleAnyGroupsNode(nodeIndex: data.index)) {
+                  if (!isVisibleAnyGroupsNode(nodeUid: data.uid)) {
                     return Container();
                   }
                   for (int i = 0; i < _controller.graph.edges.length; i++) {
-                    if (_controller.graph.edges[i].b.data.index == data.index) {
+                    if (_controller.graph.edges[i].b.data.uid == data.uid) {
                       if ((_controller.graph.edges[i].a.data.kind == kt) &&
                           (_controller.graph.edges[i].edgeExtra.isActive!)) {
-                        setControllerKind(index: data.index, kind: kt);
+                        setControllerKind(uid: data.uid, kind: kt);
                         break;
                       }
                     }
                   }
 
-                  switch (getNodeFromIndex(data.index)!.data.kind) {
+                  switch (getNodeFromUid(data.uid)!.data.kind) {
                     case ke:
                       color = Colors.black;
                       break;
@@ -1441,7 +1441,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       break;
                   }
                   //1print(
-                  //1 '(FF800)${data.index}....${data.isStartNode},,,,${data.isEndNode}++++${setBoxColor(data)}',
+                  //1 '(FF800)${data.uid}....${data.isStartNode},,,,${data.isEndNode}++++${setBoxColor(data)}',
                   //1 );
                   double resultWidth = 0;
                   switch (data.kind) {
@@ -1470,7 +1470,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       charWidth +
                       resultWidth);
                   print(
-                    '(FG3)${data.index}<<<<${(data.input ?? '').length.toDouble()}....${data.kind},,,,${boxWidth}>>>>${color}',
+                    '(FG3)${data.uid}<<<<${(data.input ?? '').length.toDouble()}....${data.kind},,,,${boxWidth}>>>>${color}',
                   );
                   return GestureDetector(
                     onTap: () {
@@ -1532,24 +1532,24 @@ class _MyHomePageState extends State<MyHomePage> {
                 },
                 edgesBuilder: (context, a, b, distance) {
                   Color color = Colors.black87;
-                  if ((!isVisibleAnyGroupsNode(nodeIndex: a.index!)) ||
-                      (!isVisibleAnyGroupsNode(nodeIndex: b.index))) {
+                  if ((!isVisibleAnyGroupsNode(nodeUid: a.uid!)) ||
+                      (!isVisibleAnyGroupsNode(nodeUid: b.uid))) {
                     return Container();
                   }
-                  if ((isIndexEqual(edgeInputNodeContentsA, a)) &&
-                      (isIndexEqual(edgeInputNodeContentsB, b)))
+                  if ((isUidEqual(edgeInputNodeContentsA, a)) &&
+                      (isUidEqual(edgeInputNodeContentsB, b)))
                     color = Colors.red;
-                  if ((isIndexEqual(edgeCommonNodeContentsA, a)) &&
-                      (isIndexEqual(edgeCommonNodeContentsB, b)))
+                  if ((isUidEqual(edgeCommonNodeContentsA, a)) &&
+                      (isUidEqual(edgeCommonNodeContentsB, b)))
                     color = Colors.blue;
-                  if ((isIndexEqual(edgeOutputNodeContentsA, a)) &&
-                      (isIndexEqual(edgeOutputNodeContentsB, b)))
+                  if ((isUidEqual(edgeOutputNodeContentsA, a)) &&
+                      (isUidEqual(edgeOutputNodeContentsB, b)))
                     color = Colors.green;
                   //1print(
-                  //1 '(FF762)${a.index}....${b.index},,,,${isEdgeActive(indexA: a.index, indexB: b.index)}',
+                  //1 '(FF762)${a.uid}....${b.uid},,,,${isEdgeActive(uidA: a.uid, uidB: b.uid)}',
                   //1);
                   //dumpGraph();
-                  if (!isEdgeActive(indexA: a.index, indexB: b.index)) {
+                  if (!isEdgeActive(uidA: a.uid, uidB: b.uid)) {
                     color = Colors.grey;
                   }
                   return /*GestureDetector(
@@ -1582,8 +1582,8 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void deleteEdge({NodeContents? a, NodeContents? b}) {
     for (int i = 0; i < _controller.graph.edges.length; i++) {
-      if ((_controller.graph.edges[i].a.data.index == a!.index) &&
-          (_controller.graph.edges[i].b.data.index == b!.index)) {
+      if ((_controller.graph.edges[i].a.data.uid == a!.uid) &&
+          (_controller.graph.edges[i].b.data.uid == b!.uid)) {
         _controller.deleteEdge(_controller.graph.edges[i]);
       }
     }
@@ -1597,7 +1597,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }) {
     double angle = 0;
     bool reverse = false;
-    if (getX(index: a!.index)! > getX(index: b!.index)!) {
+    if (getX(uid: a!.uid)! > getX(uid: b!.uid)!) {
       angle = pi;
       reverse = true;
     }
@@ -1639,23 +1639,23 @@ class _MyHomePageState extends State<MyHomePage> {
 
                           ElevatedButton(
                             child:
-                                isEdgeActive(indexA: a.index, indexB: b.index)
+                                isEdgeActive(uidA: a.uid, uidB: b.uid)
                                 ? Text('Make passive')
                                 : Text('Make active'),
                             onPressed: () {
                               //1print(
-                              //1  '(FF763)${isEdgeActive(indexA: a.index, indexB: b.index)}',
+                              //1  '(FF763)${isEdgeActive(uidA: a.uid, uidB: b.uid)}',
                               //1);
                               setEdgeExtraIsActive(
-                                indexA: a.index,
-                                indexB: b.index,
+                                uidA: a.uid,
+                                uidB: b.uid,
                                 isActive: !isEdgeActive(
-                                  indexA: a.index,
-                                  indexB: b.index,
+                                  uidA: a.uid,
+                                  uidB: b.uid,
                                 ),
                               );
                               //1print(
-                              //1  '(FF76)${a.index}....${b.index},,,,${isEdgeActive(indexA: a.index, indexB: b.index)}',
+                              //1  '(FF76)${a.uid}....${b.uid},,,,${isEdgeActive(uidA: a.uid, uidB: b.uid)}',
                               //1);
                               //dumpGraph();
                               Navigator.of(context).pop();
@@ -1728,11 +1728,11 @@ class _MyHomePageState extends State<MyHomePage> {
     }
     for (int i = 0; i < _controller.graph.nodes.length; i++) {
       setControllerIsStartNode(
-        index: _controller.graph.nodes[i].data.index,
+        uid: _controller.graph.nodes[i].data.uid,
         value: false,
       );
       setControllerIsEndNode(
-        index: _controller.graph.nodes[i].data.index,
+        uid: _controller.graph.nodes[i].data.uid,
         value: false,
       );
     }
@@ -1742,17 +1742,17 @@ class _MyHomePageState extends State<MyHomePage> {
   void alignHoriz() {
     double topY = double.maxFinite;
     double topX = 0.0;
-    int? topIndex;
+    int? topUid;
     for (int i = 0; i < _controller.graph.nodes.length; i++) {
       if (_controller.graph.nodes[i].data.isHighlight ?? false) {
         if (_controller.graph.nodes[i].position.y < topY) {
           topY = _controller.graph.nodes[i].position.y;
           topX = _controller.graph.nodes[i].position.x;
-          topIndex = i;
+          topUid = i;
         }
       }
     }
-    if (topIndex != null) {
+    if (topUid != null) {
       for (int i = 0; i < _controller.graph.nodes.length; i++) {
         if (_controller.graph.nodes[i].data.isHighlight ?? false) {
           print('(FG50)${i}....${_controller.graph.nodes[i].position.x}');
@@ -1777,20 +1777,20 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  void setGroupNodeIndex({String? groupName, int? nodeIndex}) {
+  void setGroupNodeUid({String? groupName, int? nodeUid}) {
     for (int i = 0; i < _controller.graph.groups.length; i++) {
       print(
         '(FH187A)${i},,,,${groupName}....${_controller.graph.groups[i].name}',
       );
       if (groupName == _controller.graph.groups[i].name) {
-        _controller.graph.groups[i].groupNodeIndex = nodeIndex;
-        print('(FH187A)${i},,,,${_controller.graph.groups[i].groupNodeIndex}');
+        _controller.graph.groups[i].groupNodeUid = nodeUid;
+        print('(FH187A)${i},,,,${_controller.graph.groups[i].groupNodeUid}');
       }
     }
   }
 
-  void addNodeToGroup({String? groupName, int? nodeIndex}) {
-    if ((groupName == null) || (nodeIndex == null)) {
+  void addNodeToGroup({String? groupName, int? nodeUid}) {
+    if ((groupName == null) || (nodeUid == null)) {
       return;
     }
     print('(FH8A)');
@@ -1798,34 +1798,34 @@ class _MyHomePageState extends State<MyHomePage> {
       print('(FH8A)');
       if (groupName == _controller.graph.groups[i].name) {
         print(
-          '(FH8B)${i}....${_controller.graph.groups[i].nodeIndexes!.length}',
+          '(FH8B)${i}....${_controller.graph.groups[i].nodeUids!.length}',
         );
-        if (_controller.graph.groups[i].nodeIndexes!.length == 0) {
-          _controller.graph.groups[i].nodeIndexes!.add(nodeIndex);
+        if (_controller.graph.groups[i].nodeUids!.length == 0) {
+          _controller.graph.groups[i].nodeUids!.add(nodeUid);
         } else {
           bool found = false;
           for (
             int j = 0;
-            j < _controller.graph.groups[i].nodeIndexes!.length;
+            j < _controller.graph.groups[i].nodeUids!.length;
             j++
           ) {
             print('(FH8C)');
-            if (_controller.graph.groups[i].nodeIndexes![j] == nodeIndex) {
+            if (_controller.graph.groups[i].nodeUids![j] == nodeUid) {
               print('(FH8D)');
               found = true;
             }
           }
           if (!found) {
-            _controller.graph.groups[i].nodeIndexes!.add(nodeIndex);
-            print('(FH8E)${_controller.graph.groups[i].nodeIndexes}');
+            _controller.graph.groups[i].nodeUids!.add(nodeUid);
+            print('(FH8E)${_controller.graph.groups[i].nodeUids}');
           }
         }
       }
     }
   }
 
-  void removeNodeFromGroup({String? groupName, int? nodeIndex}) {
-    if ((groupName == null) || (nodeIndex == null)) {
+  void removeNodeFromGroup({String? groupName, int? nodeUid}) {
+    if ((groupName == null) || (nodeUid == null)) {
       return;
     }
     print('(FH6A)');
@@ -1833,26 +1833,26 @@ class _MyHomePageState extends State<MyHomePage> {
       print('(FH6A)');
       if (groupName == _controller.graph.groups[i].name) {
         print(
-          '(FH6B)${i}....${_controller.graph.groups[i].nodeIndexes!.length}',
+          '(FH6B)${i}....${_controller.graph.groups[i].nodeUids!.length}',
         );
-        if (_controller.graph.groups[i].nodeIndexes!.length == 0) {
-          _controller.graph.groups[i].nodeIndexes!.add(nodeIndex);
+        if (_controller.graph.groups[i].nodeUids!.length == 0) {
+          _controller.graph.groups[i].nodeUids!.add(nodeUid);
         } else {
           bool found = false;
           for (
             int j = 0;
-            j < _controller.graph.groups[i].nodeIndexes!.length;
+            j < _controller.graph.groups[i].nodeUids!.length;
             j++
           ) {
             print('(FH6C)');
-            if (_controller.graph.groups[i].nodeIndexes![j] == nodeIndex) {
+            if (_controller.graph.groups[i].nodeUids![j] == nodeUid) {
               print('(FH6D)');
               found = true;
             }
           }
           if (!found) {
-            _controller.graph.groups[i].nodeIndexes!.remove(nodeIndex);
-            print('(FH6E)${_controller.graph.groups[i].nodeIndexes}');
+            _controller.graph.groups[i].nodeUids!.remove(nodeUid);
+            print('(FH6E)${_controller.graph.groups[i].nodeUids}');
           }
         }
       }
@@ -1863,10 +1863,10 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {
       //1print('(FF16)');
       for (int i = 0; i < _controller.graph.nodes.length; i++) {
-        int index = _controller.graph.nodes[i].data.index!;
-        setControllerIsStartNode(index: index, value: false);
-        setControllerIsEndNode(index: index, value: false);
-        setControllerIsHighlight(index: index, value: false);
+        int uid = _controller.graph.nodes[i].data.uid!;
+        setControllerIsStartNode(uid: uid, value: false);
+        setControllerIsEndNode(uid: uid, value: false);
+        setControllerIsHighlight(uid: uid, value: false);
       }
     });
   }
@@ -1942,18 +1942,18 @@ class _MyHomePageState extends State<MyHomePage> {
                               );
                             } else {
                               print(
-                                '(FH9D)${_controller.graph.nodes[i].data.index}',
+                                '(FH9D)${_controller.graph.nodes[i].data.uid}',
                               );
                               addNodeToGroup(
                                 groupName: chosenGroup!.name,
-                                nodeIndex:
-                                    _controller.graph.nodes[i].data.index,
+                                nodeUid:
+                                    _controller.graph.nodes[i].data.uid,
                               );
                             }
                           }
                         }
                         for (Group group in _controller.graph.groups) {
-                          print('(FH10)${group.name}....${group.nodeIndexes}');
+                          print('(FH10)${group.name}....${group.nodeUids}');
                         }
                       });
                       setStateMain(() {});
@@ -1985,19 +1985,19 @@ class _MyHomePageState extends State<MyHomePage> {
                                 ),
                               );
                               print(
-                                '(FH91)${_controller.graph.nodes[i].data.index}',
+                                '(FH91)${_controller.graph.nodes[i].data.uid}',
                               );
                             } else {
                               removeNodeFromGroup(
                                 groupName: chosenGroup!.name,
-                                nodeIndex:
-                                    _controller.graph.nodes[i].data.index,
+                                nodeUid:
+                                    _controller.graph.nodes[i].data.uid,
                               );
                             }
                           }
                         }
                         for (Group group in _controller.graph.groups) {
-                          print('(FH10)${group.name}....${group.nodeIndexes}');
+                          print('(FH10)${group.name}....${group.nodeUids}');
                         }
                       });
                       Navigator.of(context).pop();
@@ -2026,21 +2026,21 @@ class _MyHomePageState extends State<MyHomePage> {
                                   _controller
                                       .graph
                                       .groups[j]
-                                      .nodeIndexes!
+                                      .nodeUids!
                                       .length;
                               k++
                             ) {
                               print(
-                                '(FH30)${i}<${j}>${k}....${_controller.graph.groups[j].nodeIndexes},,,,${_controller.graph.nodes[i].data.index}',
+                                '(FH30)${i}<${j}>${k}....${_controller.graph.groups[j].nodeUids},,,,${_controller.graph.nodes[i].data.uid}',
                               );
 
-                              if (_controller.graph.groups[j].nodeIndexes![i] ==
-                                  _controller.graph.nodes[i].data.index) {
+                              if (_controller.graph.groups[j].nodeUids![i] ==
+                                  _controller.graph.nodes[i].data.uid) {
                                 setState(() {
                                   _controller.graph.nodes[i].data.isHighlight =
                                       true;
                                   print(
-                                    '(FH31)${i}<${j}>${k}....${_controller.graph.groups[j].nodeIndexes},,,,${_controller.graph.nodes[i].data.index}',
+                                    '(FH31)${i}<${j}>${k}....${_controller.graph.groups[j].nodeUids},,,,${_controller.graph.nodes[i].data.uid}',
                                   );
                                 });
                                 setStateMain(() {});
@@ -2101,7 +2101,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     onPressed: () {
                       debugPrint('(FI22)${chosenGroup}');
                       debugPrint(
-                        '(FI23)${chosenGroup.nodeIndexes}....${chosenGroup.name}',
+                        '(FI23)${chosenGroup.nodeUids}....${chosenGroup.name}',
                       );
                       if (chosenGroup == nullGroup) {
                         toastification.show(
@@ -2111,53 +2111,50 @@ class _MyHomePageState extends State<MyHomePage> {
                       } else {
                         double topY = -double.maxFinite;
                         double topX = 0.0;
-                        int? topIndex;
-                        List<int> nodeIndexes = chosenGroup.nodeIndexes!;
-                        for (int i = 0; i < nodeIndexes.length; i++) {
-                          print('(FI24)${topY}....${i},,,,${nodeIndexes}');
+                        int? topUid;
+                        List<int> nodeUids = chosenGroup.nodeUids!;
+                        for (int i = 0; i < nodeUids.length; i++) {
+                          print('(FI24)${topY}....${i},,,,${nodeUids}');
                           if (_controller
                                   .graph
-                                  .nodes[nodeIndexes[i]]
+                                  .nodes[nodeUids[i]]
                                   .position
                                   .y >
                               topY) {
                             topY = _controller
                                 .graph
-                                .nodes[nodeIndexes[i]]
+                                .nodes[nodeUids[i]]
                                 .position
                                 .y;
                             topX = _controller
                                 .graph
-                                .nodes[nodeIndexes[i]]
+                                .nodes[nodeUids[i]]
                                 .position
                                 .x;
-                            topIndex = nodeIndexes[i];
+                            topUid = nodeUids[i];
                           }
                         }
-                        debugPrint('(FI11)${topX}....${topY}...${topIndex}');
-                        int groupNodeIndex = createNode(
+                        debugPrint('(FI11)${topX}....${topY}...${topUid}');
+                        int groupNodeUid = createNode(
                           kind: kg,
                           isDataEntry: false,
                         );
-                        debugPrint('(FI12)${topX}....${topY}...${topIndex}');
-                        setGroupNodeIndex(
+                        debugPrint('(FI12)${topX}....${topY}...${topUid}');
+                        setGroupNodeUid(
                           groupName: chosenGroup.name,
-                          nodeIndex: groupNodeIndex,
+                          nodeUid: groupNodeUid,
                         );
-                        debugPrint('(FI13)${topX}....${topY}...${topIndex}');
+                        debugPrint('(FI13)${topX}....${topY}...${topUid}');
                         setNodePosition(
-                          groupNodeIndex,
+                          groupNodeUid,
                           vector.Vector2(topX, topY),
                         );
-                        debugPrint('(FI14)${topX}....${topY}...${topIndex}');
+                        debugPrint('(FI14)${topX}....${topY}...${topUid}');
                         setState(() {
-                          for (int i = 0; i < nodeIndexes.length; i++) {
-                            setNodePosition(
-                              nodeIndexes[i],
-                              vector.Vector2(topX, topY),
-                            );
+                          for (int i = 0; i < nodeUids.length; i++) {
+
                             print(
-                              '(FI31)${i}....${nodeIndexes[i]},,,,${topX}<<<<${topY}',
+                              '(FI31)${i}....${nodeUids[i]},,,,${topX}<<<<${topY}',
                             );
                           }
                         });
@@ -2248,7 +2245,7 @@ class _MyHomePageState extends State<MyHomePage> {
                           _controller.graph.groups.add(
                             Group(
                               name: groupNameTextEditingController.text,
-                              nodeIndexes: [],
+                              nodeUids: [],
                               isVisible: true,
                             ),
                           );
@@ -2269,16 +2266,16 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   int createNode({NodeKind? kind, bool? isDataEntry = false}) {
-    int current_indexIndex = _indexIndex;
+    int current_uid = _uidMaster;
     NodeContents n = NodeContents(
-      index: _indexIndex,
+      uid: _uidMaster,
       kind: kind,
       isDataEntry: isDataEntry,
       nodeFunction: NodeFunction.add,
     );
     _controller.addNode(n);
-    _indexIndex++;
-    return current_indexIndex;
+    _uidMaster++;
+    return current_uid;
   }
 
   Widget _buildMenu(BuildContext context) {
@@ -2287,13 +2284,13 @@ class _MyHomePageState extends State<MyHomePage> {
         ElevatedButton(
           onPressed: () {
             /*  NodeContents n = NodeContents(
-              index: _indexIndex,
+              uid: _uidUid,
               kind: kd,
               isDataEntry: false,
               nodeFunction: NodeFunction.add,
             );
             _controller.addNode(n);
-            _indexIndex++;*/
+            _uidUid++;*/
             createNode(kind: kd, isDataEntry: false);
           },
           child: const Text('add node'),
@@ -2462,7 +2459,7 @@ class _MyHomePageState extends State<MyHomePage> {
                                         chosenDocument!.data['filename'];
                                     _controller.graph.nodes.clear();
                                     _controller.graph.edges.clear();
-                                    _indexIndex = 0;
+                                    _uidMaster = 0;
                                     print(
                                       '(FF350)${chosenDocument!.data['json']}',
                                     );
@@ -2473,7 +2470,7 @@ class _MyHomePageState extends State<MyHomePage> {
                                         deserializeData3:
                                             deserializeNodeContents, //as NodeDataDeserializer<NodeContents>,
                                       );
-                                      int maxIndex = 0;
+                                      int maxUid = 0;
                                       for (
                                         int i = 0;
                                         i < _controller.graph.nodes.length;
@@ -2483,16 +2480,16 @@ class _MyHomePageState extends State<MyHomePage> {
                                                 .graph
                                                 .nodes[i]
                                                 .data
-                                                .index! >
-                                            maxIndex) {
-                                          maxIndex = _controller
+                                                .uid! >
+                                            maxUid) {
+                                          maxUid = _controller
                                               .graph
                                               .nodes[i]
                                               .data
-                                              .index!;
+                                              .uid!;
                                         }
                                       }
-                                      _indexIndex = maxIndex + 1;
+                                      _uidMaster = maxUid + 1;
 
                                       loadGroupsFromJson(
                                         chosenDocument!.data['json'],
@@ -2632,15 +2629,15 @@ class _MyHomePageState extends State<MyHomePage> {
           onPressed: () {
             for (int i = 0; i < _controller.graph.nodes.length; i++) {
               setControllerIsStartNode(
-                index: _controller.graph.nodes[i].data.index!,
+                uid: _controller.graph.nodes[i].data.uid!,
                 value: false,
               );
               setControllerIsEndNode(
-                index: _controller.graph.nodes[i].data.index!,
+                uid: _controller.graph.nodes[i].data.uid!,
                 value: false,
               );
               setControllerIsHighlight(
-                index: _controller.graph.nodes[i].data.index!,
+                uid: _controller.graph.nodes[i].data.uid!,
                 value: false,
               );
             }
@@ -2674,15 +2671,15 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 }
 
-double? getX({int? index}) {
+double? getX({int? uid}) {
   double? x;
   for (var node in _controller.graph.nodes) {
-    if (node.data.index == index) {
+    if (node.data.uid == uid) {
       x = node.position.x;
       break;
     }
   }
-  //1print('(FF9)${index}....${x}');
+  //1print('(FF9)${uid}....${x}');
   return x;
 }
 
@@ -2694,7 +2691,7 @@ class DrawArrow extends CustomClipper<Path> {
   Path getClip(Size size) {
     double aX = _controller.graph.nodes.first.position.x;
     //1print(
-    //1    '(FF8)${a!.index}|${getX(index: a!.index)}...${b!.index}|${getX(index: b!.index)}',
+    //1    '(FF8)${a!.uid}|${getX(uid: a!.uid)}...${b!.uid}|${getX(uid: b!.uid)}',
     //1  );
     var path = Path();
 
