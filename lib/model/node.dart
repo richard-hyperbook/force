@@ -3,6 +3,9 @@ import '../main.dart';
 
 import 'edge.dart';
 
+
+
+
 /// A class representing a node in a graph, holding a reference to arbitrary
 /// data of type [T].
 ///
@@ -89,6 +92,11 @@ class Node {
     _velocity *= damping;
     position += _velocity * scaling;
     _force = Vector2.zero();
+    print('(FJ4)${data.index}....${position}');
+    // if (data.kind == kg){
+    //   moveNodesInGroupWithGroupNode(data.index!);
+    // }
+
     return true;
   }
 

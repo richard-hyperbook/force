@@ -12,7 +12,31 @@ import 'package:appwrite/models.dart' as models;
 import 'dart:io';
 import 'dart:convert';
 
-const buildNumber = 16;
+
+void moveNodesInGroupWithGroupNode(int groupNodeIndex) {
+  print('(FJ7)${groupNodeIndex}');
+  if (_controller.graph.groups.length < 1) return;
+  Group? group;
+  for (int i = 0; i < _controller.graph.groups.length; i++) {
+    if (_controller.graph.groups[i].groupNodeIndex == groupNodeIndex) {
+      group = _controller.graph.groups[i];
+      break;
+    }
+  }
+  Node groupNode = getNodeFromIndex(groupNodeIndex)!;
+  vector.Vector2 groupNodePosition = groupNode.position!;
+  if (group == null) return;
+  for (int i = 0; i < _controller.graph.nodes.length; i++) {
+    int nodeIndex = _controller.graph.nodes[i].data.index!;
+    print('(FJ6)${i}....${nodeIndex},,,,${group.nodeIndexes}<<<<${groupNodePosition}');
+    if (group.nodeIndexes!.indexOf(nodeIndex) != -1) {
+      _controller.graph.nodes[i].position = groupNodePosition;
+    }
+  }
+}
+
+
+const buildNumber = 17;
 const double arrowHeight = 7;
 const double arrowWidth = 7;
 const double lineWidth = 3;
@@ -84,9 +108,10 @@ class MyApp extends StatelessWidget {
   }
 }
 
-enum NodeKind { kindError, kindDouble, kindDateTime, kindString }
+enum NodeKind { kindError, kindGroup, kindDouble, kindDateTime, kindString }
 
 const NodeKind ke = NodeKind.kindError;
+const NodeKind kg = NodeKind.kindGroup;
 const NodeKind kd = NodeKind.kindDouble;
 const NodeKind kt = NodeKind.kindDateTime;
 const NodeKind ks = NodeKind.kindString;
@@ -316,6 +341,7 @@ Group groupFromMap(Map<String, dynamic> groupMap) {
     name: groupMap['name'],
     nodeIndexes: nodeIndexesList,
     isVisible: groupMap['isVisible'],
+    groupNodeIndex: groupMap['groupNodeIndex'],
   );
   print(
     '(FH1002)${nodeIndexesString}....${groupMap},,,,${nodeIndexesList}====${group}',
@@ -345,6 +371,16 @@ void loadGroupsFromJson(String json) {
   }
 }
 
+Group? getGroupFromNodeIndex(int? nodeIndex) {
+  if (nodeIndex == null) return null;
+  for (int i = 0; i < _controller.graph.groups.length; i++) {
+    if (nodeIndex == _controller.graph.groups[i].groupNodeIndex) {
+      return _controller.graph.groups[i];
+    }
+  }
+  return null;
+}
+
 late final ForceDirectedGraphController _controller;
 
 List<EdgeExtra> _edgeExtras = [];
@@ -366,10 +402,12 @@ void dumpGraph() {
   }
   for (int i = 0; i < _controller.graph.groups.length; i++) {
     print(
-      '(FFDG)${_controller.graph.groups[i].name}....${_controller.graph.groups[i].nodeIndexes},,,,${_controller.graph.groups[i].isVisible}',
+      '(FFDG)${_controller.graph.groups[i].name}....${_controller.graph.groups[i].nodeIndexes},,,,${_controller.graph.groups[i].isVisible}||||${_controller.graph.groups[i].groupNodeIndex}',
     );
   }
 }
+
+
 
 int? getEdgeIntegerFromNodeIndexes({int? indexA, int? indexB}) {
   for (int i = 0; i < _controller.graph.edges.length; i++) {
@@ -609,10 +647,10 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   setNodePosition(int? index, vector.Vector2 pos) {
-    for (var node in _controller.graph.nodes) {
-      if (node.data.index == index) {
-        //1print('(FF748)${index}....${getNodePosition(index)}');
-        node.position = pos;
+    for (int i = 0; i < _controller.graph.nodes.length; i++) {
+      if (_controller.graph.nodes[i].data.index == index) {
+        print('(FI42)${index}....${getNodePosition(index)}');
+        _controller.graph.nodes[i].position = pos;
         break;
       }
     }
@@ -782,6 +820,10 @@ class _MyHomePageState extends State<MyHomePage> {
     switch (nodeContents.kind) {
       case (ke):
         return '1ERROR 1';
+      case (kg):
+        final String groupName =
+            (getGroupFromNodeIndex(nodeContents.index)!.name) ?? 'NO Group';
+        return 'G: ' + groupName;
       case (kd):
         return total.toString();
       case (kt):
@@ -853,6 +895,9 @@ class _MyHomePageState extends State<MyHomePage> {
         switch (_controller.graph.edges[i].a!.data.kind) {
           case ke:
             passiveEdgeResult = '5ERROR';
+            break;
+          case kg:
+            passiveEdgeResult = '6ERROR';
             break;
           case kd:
             passiveEdgeResult =
@@ -1296,6 +1341,10 @@ class _MyHomePageState extends State<MyHomePage> {
       switch (data.kind) {
         case (ke):
           return Text('ERROR}....${inputString}>${getResult(data)}');
+        case (kg):
+          final String groupName =
+              (getGroupFromNodeIndex(data.index)!.name) ?? 'NO Group';
+          return Text('G: ' + groupName);
         case (kd):
           return Text('${inputString}>${getResult(data)}');
         case (kt):
@@ -1329,6 +1378,7 @@ class _MyHomePageState extends State<MyHomePage> {
     return (isVisible || !inGroup);
   }
 
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1352,7 +1402,9 @@ class _MyHomePageState extends State<MyHomePage> {
                     _draggingData = null;
                   });
                 },
-                onDraggingUpdate: (NodeContents data) {},
+                onDraggingUpdate: (NodeContents data) {
+                  debugPrint('(FJ1)${data.index}');
+                },
                 nodesBuilder: (context, NodeContents data) {
                   Color color;
                   if (!isVisibleAnyGroupsNode(nodeIndex: data.index)) {
@@ -1371,6 +1423,9 @@ class _MyHomePageState extends State<MyHomePage> {
                   switch (getNodeFromIndex(data.index)!.data.kind) {
                     case ke:
                       color = Colors.black;
+                      break;
+                    case kg:
+                      color = Colors.brown;
                       break;
                     case kd:
                       color = Colors.purple;
@@ -1392,6 +1447,9 @@ class _MyHomePageState extends State<MyHomePage> {
                   switch (data.kind) {
                     case (ke):
                       resultWidth = 50;
+                      break;
+                    case (kg):
+                      resultWidth = 150;
                       break;
                     case (kd):
                       resultWidth = 80;
@@ -1719,6 +1777,18 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
+  void setGroupNodeIndex({String? groupName, int? nodeIndex}) {
+    for (int i = 0; i < _controller.graph.groups.length; i++) {
+      print(
+        '(FH187A)${i},,,,${groupName}....${_controller.graph.groups[i].name}',
+      );
+      if (groupName == _controller.graph.groups[i].name) {
+        _controller.graph.groups[i].groupNodeIndex = nodeIndex;
+        print('(FH187A)${i},,,,${_controller.graph.groups[i].groupNodeIndex}');
+      }
+    }
+  }
+
   void addNodeToGroup({String? groupName, int? nodeIndex}) {
     if ((groupName == null) || (nodeIndex == null)) {
       return;
@@ -1816,6 +1886,7 @@ class _MyHomePageState extends State<MyHomePage> {
     showDialog<double>(
       context: context,
       builder: (BuildContext context) {
+        debugPrint('(FI7)${createGroupButtonCaption}');
         return StatefulBuilder(
           builder: (context, setStateMain) {
             return AlertDialog(
@@ -2026,7 +2097,12 @@ class _MyHomePageState extends State<MyHomePage> {
                   ),
                   ElevatedButton(
                     child: Text('Collapse group'),
+
                     onPressed: () {
+                      debugPrint('(FI22)${chosenGroup}');
+                      debugPrint(
+                        '(FI23)${chosenGroup.nodeIndexes}....${chosenGroup.name}',
+                      );
                       if (chosenGroup == nullGroup) {
                         toastification.show(
                           context: context,
@@ -2038,9 +2114,7 @@ class _MyHomePageState extends State<MyHomePage> {
                         int? topIndex;
                         List<int> nodeIndexes = chosenGroup.nodeIndexes!;
                         for (int i = 0; i < nodeIndexes.length; i++) {
-                          print(
-                            '(FH110)${topY}....${i},,,,${nodeIndexes}'
-                          );
+                          print('(FI24)${topY}....${i},,,,${nodeIndexes}');
                           if (_controller
                                   .graph
                                   .nodes[nodeIndexes[i]]
@@ -2060,13 +2134,31 @@ class _MyHomePageState extends State<MyHomePage> {
                             topIndex = nodeIndexes[i];
                           }
                         }
+                        debugPrint('(FI11)${topX}....${topY}...${topIndex}');
+                        int groupNodeIndex = createNode(
+                          kind: kg,
+                          isDataEntry: false,
+                        );
+                        debugPrint('(FI12)${topX}....${topY}...${topIndex}');
+                        setGroupNodeIndex(
+                          groupName: chosenGroup.name,
+                          nodeIndex: groupNodeIndex,
+                        );
+                        debugPrint('(FI13)${topX}....${topY}...${topIndex}');
+                        setNodePosition(
+                          groupNodeIndex,
+                          vector.Vector2(topX, topY),
+                        );
+                        debugPrint('(FI14)${topX}....${topY}...${topIndex}');
                         setState(() {
                           for (int i = 0; i < nodeIndexes.length; i++) {
                             setNodePosition(
                               nodeIndexes[i],
                               vector.Vector2(topX, topY),
                             );
-                            print('(FH111)${i}....${nodeIndexes[i]}');
+                            print(
+                              '(FI31)${i}....${nodeIndexes[i]},,,,${topX}<<<<${topY}',
+                            );
                           }
                         });
                         print(
@@ -2074,6 +2166,7 @@ class _MyHomePageState extends State<MyHomePage> {
                         );
                         Navigator.of(context).pop();
                       }
+                      dumpGraph();
                     },
                   ),
 
@@ -2096,17 +2189,48 @@ class _MyHomePageState extends State<MyHomePage> {
                   Divider(),
                   TextField(
                     controller: groupNameTextEditingController,
-                    onChanged: (value) async {},
-                  ),
-                  ElevatedButton(
-                    onPressed: () {
-                      print('(FH360)');
+                    onChanged: (value) async {
                       bool found = false;
                       for (
                         int i = 0;
                         i < _controller.graph.groups.length;
                         i++
                       ) {
+                        debugPrint(
+                          '(FI4)${groupNameTextEditingController.text}....${_controller.graph.groups[i].name}',
+                        );
+                        if (groupNameTextEditingController.text ==
+                            _controller.graph.groups[i].name) {
+                          found = true;
+                          break;
+                        }
+                      }
+
+                      debugPrint(
+                        '(FI3)${found}////${createGroupButtonCaption}',
+                      );
+                      setState(() {
+                        if (found) {
+                          createGroupButtonCaption =
+                              kCreateGroupButtonCaptionGroupExists;
+                        } else {
+                          createGroupButtonCaption = kCreateGroupButtonCaption;
+                        }
+                      });
+                    },
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      debugPrint('(FI6)${createGroupButtonCaption}');
+                      bool found = false;
+                      for (
+                        int i = 0;
+                        i < _controller.graph.groups.length;
+                        i++
+                      ) {
+                        debugPrint(
+                          '(FI2)${groupNameTextEditingController.text}....${_controller.graph.groups[i].name}',
+                        );
                         if (groupNameTextEditingController.text ==
                             _controller.graph.groups[i].name) {
                           found = true;
@@ -2114,6 +2238,7 @@ class _MyHomePageState extends State<MyHomePage> {
                         }
                       }
                       if (found) {
+                        debugPrint('(FI1)');
                         setState(() {
                           createGroupButtonCaption =
                               kCreateGroupButtonCaptionGroupExists;
@@ -2143,19 +2268,33 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
+  int createNode({NodeKind? kind, bool? isDataEntry = false}) {
+    int current_indexIndex = _indexIndex;
+    NodeContents n = NodeContents(
+      index: _indexIndex,
+      kind: kind,
+      isDataEntry: isDataEntry,
+      nodeFunction: NodeFunction.add,
+    );
+    _controller.addNode(n);
+    _indexIndex++;
+    return current_indexIndex;
+  }
+
   Widget _buildMenu(BuildContext context) {
     return Wrap(
       children: [
         ElevatedButton(
           onPressed: () {
-            NodeContents n = NodeContents(
+            /*  NodeContents n = NodeContents(
               index: _indexIndex,
               kind: kd,
               isDataEntry: false,
               nodeFunction: NodeFunction.add,
             );
             _controller.addNode(n);
-            _indexIndex++;
+            _indexIndex++;*/
+            createNode(kind: kd, isDataEntry: false);
           },
           child: const Text('add node'),
         ),

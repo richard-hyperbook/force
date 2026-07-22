@@ -5,16 +5,18 @@ class Group {
   String? name;
   List<int>? nodeIndexes;
   bool? isVisible;
+  int? groupNodeIndex;
 
-  Group({this.name, this.nodeIndexes, this.isVisible});
+  Group({this.name, this.nodeIndexes, this.isVisible, this.groupNodeIndex});
 
   Map<String, dynamic> toJson() {
     Map<String, dynamic> m = {
       'name': name,
       'nodeIndexes': getStringFromNodeIndexes(nodeIndexes!),
       'isVisible': isVisible,
+      'groupNodeIndex': groupNodeIndex,
     };
-    print('(FH84)${this.name}....${this.nodeIndexes},,,,${m}');
+    print('(FH84)${this.name}....${this.nodeIndexes},,,,${this.groupNodeIndex}@@@@${m}');
     return m;
   }
 
@@ -29,10 +31,6 @@ class Group {
     }
     return json + ']';
   }
-
-
-
-
 
 }
 

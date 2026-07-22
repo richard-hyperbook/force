@@ -14,15 +14,20 @@ import '../main.dart';
 /// A builder that builds a node.
 /// [context] is the build context.
 /// [data] is the data of the node.
-typedef NodeBuilder = Widget Function(BuildContext context, NodeContents  data);
+typedef NodeBuilder = Widget Function(BuildContext context, NodeContents data);
 
 /// A builder that builds an edge.
 /// [context] is the build context.
 /// [a] is the data of the node at the start of the edge.
 /// [b] is the data of the node at the end of the edge.
 /// [distance] is the distance between the two nodes.
-typedef EdgeBuilder = Widget Function(
-    BuildContext context, NodeContents a, NodeContents  b, double distance);
+typedef EdgeBuilder =
+    Widget Function(
+      BuildContext context,
+      NodeContents a,
+      NodeContents b,
+      double distance,
+    );
 
 /// A widget that displays a force-directed graph.
 class ForceDirectedGraphWidget extends StatefulWidget {
@@ -62,11 +67,10 @@ class ForceDirectedGraphWidget extends StatefulWidget {
   final void Function(NodeContents data)? onDraggingUpdate;
 
   /// Called when a node is end dragging.
-  final void Function(NodeContents  data)? onDraggingEnd;
+  final void Function(NodeContents data)? onDraggingEnd;
 
   @override
-  State<ForceDirectedGraphWidget> createState() =>
-      _ForceDirectedGraphState();
+  State<ForceDirectedGraphWidget> createState() => _ForceDirectedGraphState();
 }
 
 class _ForceDirectedGraphState extends State<ForceDirectedGraphWidget>
@@ -163,43 +167,49 @@ class _ForceDirectedGraphState extends State<ForceDirectedGraphWidget>
 
   @override
   Widget build(BuildContext context) {
-    final nodes = _controller.graph.nodes.where((element) {
-      final offset = Offset(element.position.x, element.position.y);
-      return _inRect(offset, paintBound);
-    }).map((e) {
-      final child = widget.nodesBuilder(context, e.data);
-      assert(child is! NodeWidget);
-      return NodeWidget(
-        node: e,
-        child: child,
-      );
-    });
+    final nodes = _controller.graph.nodes
+        .where((element) {
+          final offset = Offset(element.position.x, element.position.y);
+          return _inRect(offset, paintBound);
+        })
+        .map((e) {
+          final child = widget.nodesBuilder(context, e.data);
+          assert(child is! NodeWidget);
+          return NodeWidget(node: e, child: child);
+        });
 
-    final edges = _controller.graph.edges.where((element) {
-      print('(FF3001)${element.a.data.index},,,,${element.b.data.index},,,,${element}....');
-      final a = Offset(element.a.position.x, element.a.position.y);
-      final b = Offset(element.b.position.x, element.b.position.y);
-      print('(FF3002)${a}...${b}');
-      return _inRect(a, paintBound) ||
-          _inRect(b, paintBound) ||
-          _isLineIntersectsRect(a, b, paintBound);
-    }).map((e) {
-      final child =
-          widget.edgesBuilder(context, e.a.data, e.b.data, e.distance);
-      assert(child is! EdgeWidget);
-      return EdgeWidget(
-        edge: e,
-        child: child,
-      );
-    });
+    final edges = _controller.graph.edges
+        .where((element) {
+          print(
+            '(FF3001)${element.a.position.x},,,,${element.a.position.y},,,,${element.distance}....',
+          );
+          final a = Offset(element.a.position.x, element.a.position.y);
+          final b = Offset(element.b.position.x, element.b.position.y);
+          print('(FF3002)${a}...${b}');
+          return _inRect(a, paintBound) ||
+              _inRect(b, paintBound) ||
+              _isLineIntersectsRect(a, b, paintBound);
+        })
+        .map((e) {
+          final child = widget.edgesBuilder(
+            context,
+            e.a.data,
+            e.b.data,
+            e.distance,
+          );
+          assert(child is! EdgeWidget);
+          return EdgeWidget(edge: e, child: child);
+        });
 
     return GestureDetector(
       onScaleStart: (details) {
         _scale = _controller.scale;
       },
       onScaleUpdate: (details) {
-        final scale = (_scale * details.scale)
-            .clamp(_controller.minScale, _controller.maxScale);
+        final scale = (_scale * details.scale).clamp(
+          _controller.minScale,
+          _controller.maxScale,
+        );
         _controller.scale = scale;
       },
       child: NotificationListener<PaintBoundChangeNotification>(
@@ -277,7 +287,9 @@ class ForceDirectedGraphBody extends MultiChildRenderObjectWidget {
 
   @override
   void updateRenderObject(
-      BuildContext context, ForceDirectedGraphRenderObject renderObject) {
+    BuildContext context,
+    ForceDirectedGraphRenderObject renderObject,
+  ) {
     renderObject
       ..graph = graph
       ..cachePaintOffset = cachePaintOffset
@@ -289,8 +301,10 @@ class ForceDirectedGraphBody extends MultiChildRenderObjectWidget {
 class ForceDirectedGraphRenderObject extends RenderBox
     with
         ContainerRenderObjectMixin<RenderBox, ForceDirectedGraphParentData>,
-        RenderBoxContainerDefaultsMixin<RenderBox,
-            ForceDirectedGraphParentData> {
+        RenderBoxContainerDefaultsMixin<
+          RenderBox,
+          ForceDirectedGraphParentData
+        > {
   ForceDirectedGraphRenderObject({
     required ForceDirectedGraph graph,
     required double cachePaintOffset,
@@ -301,10 +315,10 @@ class ForceDirectedGraphRenderObject extends RenderBox
     required this.onDraggingStart,
     required this.onDraggingEnd,
     required this.onPaintBoundChange,
-  })  : _graph = graph,
-        _cachePaintOffset = cachePaintOffset,
-        _edgeAlwaysUp = edgeAlwaysUp,
-        _scale = scale;
+  }) : _graph = graph,
+       _cachePaintOffset = cachePaintOffset,
+       _edgeAlwaysUp = edgeAlwaysUp,
+       _scale = scale;
 
   final ForceDirectedGraphController controller;
 
@@ -338,10 +352,11 @@ class ForceDirectedGraphRenderObject extends RenderBox
     }
     _scale = value;
     canPaintBound = Rect.fromLTRB(
-        (-size.width / 2 - cachePaintOffset) / _scale,
-        (-size.height / 2 - cachePaintOffset) / _scale,
-        (size.width / 2 + cachePaintOffset) / _scale,
-        (size.height / 2 + cachePaintOffset) / _scale);
+      (-size.width / 2 - cachePaintOffset) / _scale,
+      (-size.height / 2 - cachePaintOffset) / _scale,
+      (size.width / 2 + cachePaintOffset) / _scale,
+      (size.height / 2 + cachePaintOffset) / _scale,
+    );
     markNeedsPaint();
   }
 
@@ -353,10 +368,11 @@ class ForceDirectedGraphRenderObject extends RenderBox
     }
     _cachePaintOffset = value;
     canPaintBound = Rect.fromLTRB(
-        (-size.width / 2 - cachePaintOffset) / _scale,
-        (-size.height / 2 - cachePaintOffset) / _scale,
-        (size.width / 2 + cachePaintOffset) / _scale,
-        (size.height / 2 + cachePaintOffset) / _scale);
+      (-size.width / 2 - cachePaintOffset) / _scale,
+      (-size.height / 2 - cachePaintOffset) / _scale,
+      (size.width / 2 + cachePaintOffset) / _scale,
+      (size.height / 2 + cachePaintOffset) / _scale,
+    );
     markNeedsPaint();
   }
 
@@ -400,10 +416,11 @@ class ForceDirectedGraphRenderObject extends RenderBox
     super.performResize();
     if (_oldSize != size) {
       canPaintBound = Rect.fromLTRB(
-          (-size.width / 2 - cachePaintOffset) / _scale,
-          (-size.height / 2 - cachePaintOffset) / _scale,
-          (size.width / 2 + cachePaintOffset) / _scale,
-          (size.height / 2 + cachePaintOffset) / _scale);
+        (-size.width / 2 - cachePaintOffset) / _scale,
+        (-size.height / 2 - cachePaintOffset) / _scale,
+        (size.width / 2 + cachePaintOffset) / _scale,
+        (size.height / 2 + cachePaintOffset) / _scale,
+      );
       _oldSize = size;
     }
   }
@@ -429,12 +446,13 @@ class ForceDirectedGraphRenderObject extends RenderBox
       final childCenter = child.size.center(Offset.zero);
 
       if (parentData.node != null) {
-
         // paint node
         final node = parentData.node!;
         final moveOffset = Offset(node.position.x, -node.position.y);
         final finalOffset = -childCenter + moveOffset;
-        print('(FH1)${node.data.index}....${moveOffset},,,,${finalOffset}++++${center.dx}****${center.dy}');
+        print(
+          '(FH1)${node.data.index}....${moveOffset},,,,${finalOffset}++++${center.dx}****${center.dy}',
+        );
         context.paintChild(child, finalOffset);
 
         final childOffset = moveOffset + center - offset - childCenter;
@@ -451,7 +469,9 @@ class ForceDirectedGraphRenderObject extends RenderBox
         final edgeCenter = (edge.a.position + edge.b.position) / 2;
         final moveOffset = Offset(edgeCenter.x, -edgeCenter.y);
         final finalOffset = -childCenter + moveOffset;
-        print('(FH2)${edge.a.data.index}>>>>${edge.b.data.index}....${moveOffset},,,,${finalOffset}++++${center.dx}****${center.dy}');
+        print(
+          '(FH2)${edge.a.data.index}>>>>${edge.b.data.index}....${moveOffset},,,,${finalOffset}++++${center.dx}****${center.dy}',
+        );
         final angle = edgeAlwaysUp ? edge.angle : edge.rawAngle;
         context.canvas
           ..translate(moveOffset.dx, moveOffset.dy)
@@ -467,10 +487,14 @@ class ForceDirectedGraphRenderObject extends RenderBox
           ..scale(_scale, _scale)
           ..translate(-center.dx, -center.dy)
           ..translate(
-              childOffset.dx + childCenter.dx, childOffset.dy + childCenter.dy)
+            childOffset.dx + childCenter.dx,
+            childOffset.dy + childCenter.dy,
+          )
           ..rotateZ(angle)
           ..translate(-childCenter.dx, -childCenter.dy);
-        print('(FF3010)${edge.a.data.index}....${edge.b.data.index},,,,${edgeCenter}====${angle}');
+        print(
+          '(FF3010)${edge.a.data.index}....${edge.b.data.index},,,,${edgeCenter}====${angle}',
+        );
       } else {
         throw Exception('Unknown child'); // coverage:ignore-line
       }
@@ -534,7 +558,8 @@ class ForceDirectedGraphRenderObject extends RenderBox
       if (_hitNode != null && _isDragging) {
         // move node
         onDraggingUpdate(_hitNode!.data);
-        _downPosition = _downPosition! +
+        _downPosition =
+            _downPosition! +
             vector.Vector2(event.delta.dx / _scale, -event.delta.dy / _scale);
         _hitNode!.position = _downPosition!;
         markNeedsPaint();
@@ -544,8 +569,10 @@ class ForceDirectedGraphRenderObject extends RenderBox
       } else {
         // move graph
         for (final node in _graph.nodes) {
-          node.position +=
-              vector.Vector2(event.delta.dx / _scale, -event.delta.dy / _scale);
+          node.position += vector.Vector2(
+            event.delta.dx / _scale,
+            -event.delta.dy / _scale,
+          );
         }
         markNeedsPaint();
       }
