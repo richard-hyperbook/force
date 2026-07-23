@@ -208,6 +208,7 @@ class ForceDirectedGraph {
           other,
           k: config.repulsion,
         );
+        print('(FJ71)${repulsionForce}....${node.data.uid},,,,${other.data.uid}');
         node.applyForce(repulsionForce);
       }
     }
@@ -219,6 +220,8 @@ class ForceDirectedGraph {
       final attractionForceDirectionA = edge
           .calculateAttractionForceDirectionA();
       final fa = attractionForceDirectionA * attractionForce;
+
+      print('(FJ72)${fa}....${attractionForceDirectionA},,,,${attractionForce}++++${edge.a.data.uid}----${edge.b.data.uid}}');
       edge.a.applyForce(fa);
       edge.b.applyForce(-fa);
     }

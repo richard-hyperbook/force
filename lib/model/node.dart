@@ -4,7 +4,7 @@ import '../main.dart';
 import 'edge.dart';
 
 
-
+const double kminDistance = 0.001;
 
 /// A class representing a node in a graph, holding a reference to arbitrary
 /// data of type [T].
@@ -41,13 +41,15 @@ class Node {
   /// The force is calculated based on the distance between the current [Node] and
   /// the [other] [Node], and the required [double] value [k].
   Vector2 calculateRepulsionForce(Node other, {required double k}) {
-    final distance = position.distanceTo(other.position);
+    final distance = position.distanceTo(other.position) + kminDistance;
     final direction = (position - other.position).normalized();
+    print('(FJ73)${other.data.uid}....${k},,,,${distance}++++${direction}<<<<${direction * k * k / distance}');
     return direction * k * k / distance;
   }
 
   /// Adds a force to the current force acting on the [Node].
   void applyForce(Vector2 force) {
+    print('(FJ60)${_force}....${force}');
     _force += force;
   }
 
@@ -77,6 +79,7 @@ class Node {
     }
     if (_velocity.length < minVelocity) {
       // static state
+      print('(FJ61)${_force}');
       if (_force.length < maxStaticFriction) {
         // If the force is too small in the static state, no calculation is required
         _velocity = Vector2.zero();
@@ -87,12 +90,15 @@ class Node {
 
     // dynamic state
     final friction = -_velocity.normalized() * maxStaticFriction;
+    print('(FJ62)${_force}....${friction}');
     _force += friction;
     _velocity += _force / mass;
     _velocity *= damping;
+    print('(FJ63)${data.uid}....${position}++++${friction}&&&&${_force}____${mass}%%%%${damping}');
     position += _velocity * scaling;
+
     _force = Vector2.zero();
-    print('(FJ4)${data.uid}....${position}');
+    print('(FJ64)${data.uid}....${position},,,,${_velocity}++++${scaling}');
     // if (data.kind == kg){
     //   moveNodesInGroupWithGroupNode(data.uid!);
     // }

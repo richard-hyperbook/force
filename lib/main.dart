@@ -120,6 +120,8 @@ NodeKind? getNodeKindFromString(String s) {
   switch (s) {
     case 'kindError':
       return ke;
+    case 'kindGroup':
+      return kg;
     case 'kindDouble':
       return kd;
     case 'kindDateTime':
@@ -135,6 +137,8 @@ String? getStringFromNodeKind(NodeKind? k) {
   switch (k) {
     case ke:
       return 'kindError';
+    case kg:
+      return 'kindGroup';
     case kd:
       return 'kindDouble';
     case kt:
@@ -472,7 +476,7 @@ void deleteEdgeByData({
   _controller.deleteEdgeByData(nodeA!, nodeB!);
 }
 
-int _uidMaster = 0;
+int _uidMaster = -1;
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
@@ -517,9 +521,11 @@ class _MyHomePageState extends State<MyHomePage> {
             maxDepth: 20,
             n: 4,
             generator: () {
+              int uid = _uidMaster;
+              _uidMaster++;
               return NodeContents(
                 kind: kd,
-                uid: _uidMaster++,
+                uid: uid,
                 input: '',
                 isDataEntry: false,
                 nodeFunction: NodeFunction.add,
@@ -649,7 +655,7 @@ class _MyHomePageState extends State<MyHomePage> {
   setNodePosition(int? uid, vector.Vector2 pos) {
     for (int i = 0; i < _controller.graph.nodes.length; i++) {
       if (_controller.graph.nodes[i].data.uid == uid) {
-        print('(FI42)${uid}....${getNodePosition(uid)}');
+        print('(FI42)${uid}....${getNodePosition(uid)}||||${pos}');
         _controller.graph.nodes[i].position = pos;
         break;
       }
@@ -2109,61 +2115,80 @@ class _MyHomePageState extends State<MyHomePage> {
                           title: Text('Select group'),
                         );
                       } else {
-                        double topY = -double.maxFinite;
-                        double topX = 0.0;
-                        int? topUid;
-                        List<int> nodeUids = chosenGroup.nodeUids!;
-                        for (int i = 0; i < nodeUids.length; i++) {
-                          print('(FI24)${topY}....${i},,,,${nodeUids}');
-                          if (_controller
+                        if (chosenGroup.groupNodeUid != null) {
+                          vector.Vector2 pos = getNodeFromUid(chosenGroup.groupNodeUid)!.position;
+                          for (int i = 0; i < chosenGroup.nodeUids!.length; i++) {
+                            setNodePosition(
+                              chosenGroup.nodeUids![i],
+                              pos,
+                            );
+                            print(
+                              '(FI31B)${i}....${chosenGroup.nodeUids![i]},,,,${pos}',
+                            );
+                          }
+                        } else {
+                          double topY = -double.maxFinite;
+                          double topX = 0.0;
+                          int? topUid;
+                          List<int> nodeUids = chosenGroup.nodeUids!;
+                          for (int i = 0; i < nodeUids.length; i++) {
+                            print('(FI24)${topY}....${i},,,,${nodeUids}');
+                            if (_controller
+                                .graph
+                                .nodes[nodeUids[i]]
+                                .position
+                                .y >
+                                topY) {
+                              topY = _controller
                                   .graph
                                   .nodes[nodeUids[i]]
                                   .position
-                                  .y >
-                              topY) {
-                            topY = _controller
-                                .graph
-                                .nodes[nodeUids[i]]
-                                .position
-                                .y;
-                            topX = _controller
-                                .graph
-                                .nodes[nodeUids[i]]
-                                .position
-                                .x;
-                            topUid = nodeUids[i];
+                                  .y;
+                              topX = _controller
+                                  .graph
+                                  .nodes[nodeUids[i]]
+                                  .position
+                                  .x;
+                              topUid = nodeUids[i];
+                            }
                           }
-                        }
-                        debugPrint('(FI11)${topX}....${topY}...${topUid}');
-                        int groupNodeUid = createNode(
-                          kind: kg,
-                          isDataEntry: false,
-                        );
-                        debugPrint('(FI12)${topX}....${topY}...${topUid}');
-                        setGroupNodeUid(
-                          groupName: chosenGroup.name,
-                          nodeUid: groupNodeUid,
-                        );
-                        debugPrint('(FI13)${topX}....${topY}...${topUid}');
-                        setNodePosition(
-                          groupNodeUid,
-                          vector.Vector2(topX, topY),
-                        );
-                        debugPrint('(FI14)${topX}....${topY}...${topUid}');
-                        setState(() {
-                          for (int i = 0; i < nodeUids.length; i++) {
+                          debugPrint('(FI11)${topX}....${topY}...${topUid}');
+                          int groupNodeUid = createNode(
+                            kind: kg,
+                            isDataEntry: false,
+                          );
+                          debugPrint('(FI12)${topX}....${topY}...${topUid}');
+                          setGroupNodeUid(
+                            groupName: chosenGroup.name,
+                            nodeUid: groupNodeUid,
+                          );
+                          debugPrint('(FI13)${topX}....${topY}...${topUid}');
+                          setNodePosition(
+                            groupNodeUid,
+                            vector.Vector2(topX, topY),
+                          );
+                          debugPrint('(FI14)${topX}....${topY}...${topUid}????${nodeUids}');
+                          setState(() {
+                            for (int i = 0; i < nodeUids.length; i++) {
+                              setNodePosition(
+                                nodeUids[i],
+                                vector.Vector2(topX, topY),
+                              );
+                              print(
+                                '(FI31)${i}....${nodeUids[i]},,,,${topX}<<<<${topY}',
+                              );
+                            }
+                          });
+                          print(
+                            '(FH40)${chosenGroup.name}....${_controller.graph
+                                .groups}',
+                          );
 
-                            print(
-                              '(FI31)${i}....${nodeUids[i]},,,,${topX}<<<<${topY}',
-                            );
-                          }
-                        });
-                        print(
-                          '(FH40)${chosenGroup.name}....${_controller.graph.groups}',
-                        );
-                        Navigator.of(context).pop();
+                        }
                       }
+                      setState((){});
                       dumpGraph();
+                      Navigator.of(context).pop();
                     },
                   ),
 
@@ -2268,12 +2293,14 @@ class _MyHomePageState extends State<MyHomePage> {
   int createNode({NodeKind? kind, bool? isDataEntry = false}) {
     int current_uid = _uidMaster;
     NodeContents n = NodeContents(
-      uid: _uidMaster,
+      uid: current_uid,
       kind: kind,
       isDataEntry: isDataEntry,
       nodeFunction: NodeFunction.add,
     );
     _controller.addNode(n);
+    print('(FJ51)${n.uid}....${n.kind}');
+    dumpGraph();
     _uidMaster++;
     return current_uid;
   }
