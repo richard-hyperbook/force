@@ -11,32 +11,12 @@ import 'package:appwrite/appwrite.dart';
 import 'package:appwrite/models.dart' as models;
 import 'dart:io';
 import 'dart:convert';
+import 'package:function_tree/function_tree.dart';
 
 
-void moveNodesInGroupWithGroupNode(int groupNodeUid) {
-  print('(FJ7)${groupNodeUid}');
-  if (_controller.graph.groups.length < 1) return;
-  Group? group;
-  for (int i = 0; i < _controller.graph.groups.length; i++) {
-    if (_controller.graph.groups[i].groupNodeUid == groupNodeUid) {
-      group = _controller.graph.groups[i];
-      break;
-    }
-  }
-  Node groupNode = getNodeFromUid(groupNodeUid)!;
-  vector.Vector2 groupNodePosition = groupNode.position!;
-  if (group == null) return;
-  for (int i = 0; i < _controller.graph.nodes.length; i++) {
-    int nodeUid = _controller.graph.nodes[i].data.uid!;
-    print('(FJ6)${i}....${nodeUid},,,,${group.nodeUids}<<<<${groupNodePosition}');
-    if (group.nodeUids!.indexOf(nodeUid) != -1) {
-      _controller.graph.nodes[i].position = groupNodePosition;
-    }
-  }
-}
 
 
-const buildNumber = 18;
+const buildNumber = 19;
 const double arrowHeight = 7;
 const double arrowWidth = 7;
 const double lineWidth = 3;
@@ -81,6 +61,29 @@ TextEditingController dataEntryTextEditingController = TextEditingController(
 TextEditingController groupNameTextEditingController = TextEditingController(
   text: '',
 );
+
+void moveNodesInGroupWithGroupNode(int groupNodeUid) {
+  print('(FJ7)${groupNodeUid}');
+  if (_controller.graph.groups.length < 1) return;
+  Group? group;
+  for (int i = 0; i < _controller.graph.groups.length; i++) {
+    if (_controller.graph.groups[i].groupNodeUid == groupNodeUid) {
+      group = _controller.graph.groups[i];
+      break;
+    }
+  }
+  Node groupNode = getNodeFromUid(groupNodeUid)!;
+  vector.Vector2 groupNodePosition = groupNode.position!;
+  if (group == null) return;
+  for (int i = 0; i < _controller.graph.nodes.length; i++) {
+    int nodeUid = _controller.graph.nodes[i].data.uid!;
+    print('(FJ6)${i}....${nodeUid},,,,${group.nodeUids}<<<<${groupNodePosition}');
+    if (group.nodeUids!.indexOf(nodeUid) != -1) {
+      _controller.graph.nodes[i].position = groupNodePosition;
+    }
+  }
+}
+
 
 void main() {
   runApp(const MyApp());
@@ -166,11 +169,13 @@ const NodeFunction kAdd = NodeFunction.add;
 const NodeFunction kMultiply = NodeFunction.multiply;
 const NodeFunction kReciprocate = NodeFunction.reciprocate;
 
+
 const Map<NodeFunction, String> nodeFunctionSymbol = {
   kNof: '?',
   kAdd: '+',
   kMultiply: '*',
   kReciprocate: '\u2339',
+
 };
 
 class NodeContents {
@@ -727,6 +732,7 @@ class _MyHomePageState extends State<MyHomePage> {
           case (kReciprocate):
             result = (total ?? 1.0) / (edge.a.data.doubleResult ?? 0.0);
             break;
+
           default:
             print('(FH100)${edge.b.data.nodeFunction!.name}');
             result = null;
@@ -797,6 +803,14 @@ class _MyHomePageState extends State<MyHomePage> {
     if (total == '') total = null;
     total = totalDouble ?? total;
     total = totalDateTime ?? total;
+    if ( (nodeContents.input != null) && (nodeContents.input != '')){
+      try {
+        total = nodeContents.input!.interpret();
+        print('(FFK1)${nodeContents.input}....${total}');
+      } on Exception catch (e) {
+        print('(FFK2)${e},,,,${nodeContents.input}....${total}');
+      }
+    }
     bool edgeFound = false;
     bool isFirstEdge = true;
     //dumpGraph();
@@ -839,6 +853,9 @@ class _MyHomePageState extends State<MyHomePage> {
           return '';
         }
       case (ks):
+        if (total is double){
+          total = total.toString();
+        }
         return total;
       case (null):
         return '!!!';
