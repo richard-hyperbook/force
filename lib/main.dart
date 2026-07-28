@@ -793,7 +793,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   String getResult(NodeContents nodeContents) {
     if (nodeContents.kind == ke) {
-      return '4ERROR 4';
+      return '4ERROR 4';//////////////////////////////////////////
     }
 
     DateTime? totalDateTime = stringToDateTime(nodeContents.input ?? '');
