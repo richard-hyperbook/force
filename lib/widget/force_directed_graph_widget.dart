@@ -198,6 +198,7 @@ class _ForceDirectedGraphState extends State<ForceDirectedGraphWidget>
             e.distance,
           );
           assert(child is! EdgeWidget);
+          print('(FF3003)${e}...${child.toStringDeep()}');
           return EdgeWidget(edge: e, child: child);
         });
 
@@ -478,6 +479,8 @@ class ForceDirectedGraphRenderObject extends RenderBox
           ..rotate(angle)
           ..translate(-moveOffset.dx, -moveOffset.dy);
         context.paintChild(child, finalOffset);
+       //  context.paintChild(ChildType(), offset)
+        print('(FFE50)${child.runtimeType}....${child}');
 
         final childOffset = moveOffset + center - offset - childCenter;
 
@@ -604,3 +607,116 @@ class ForceDirectedGraphParentData extends ContainerBoxParentData<RenderBox> {
 
   ForceDirectedGraphParentData();
 }
+/*
+
+class CenteredColoredBox extends SingleChildRenderObjectWidget {
+  const CenteredColoredBox({required this.color, Widget? child, Key? key})
+      : assert(color != null),
+        super(key: key, child: child);
+
+  final Color color;
+
+  @override
+  RenderCenteredColoredBox createRenderObject(BuildContext context) {
+    return RenderCenteredColoredBox(color: color);
+  }
+
+  @override
+  void updateRenderObject(
+      BuildContext context, RenderCenteredColoredBox renderObject) {
+    renderObject.color = color;
+  }
+}
+
+class RenderCenteredColoredBox extends RenderProxyBox {
+  RenderCenteredColoredBox({required Color color, RenderBox? child})
+      : _color = color,
+        super(child);
+
+  @override
+  void setupParentData(RenderObject child) {
+    if (child.parentData is! BoxParentData) child.parentData = BoxParentData();
+  }
+
+  Color get color => _color;
+  Color _color;
+  set color(Color value) {
+    assert(value != null);
+    if (value == _color) {
+      return;
+    }
+    _color = value;
+    markNeedsPaint();
+  }
+
+  @override
+  void performLayout() {
+    size = constraints.biggest;
+
+    if (child != null) {
+      child!.layout(constraints.loosen(), parentUsesSize: true);
+      final childParentData = child!.parentData as BoxParentData;
+      childParentData.offset = Alignment.center.alongOffset(size - child!.size as Offset);
+    }
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    context.canvas.drawRect(offset & size, Paint()..color = color);
+    if (child != null) {
+      final childParentData = child!.parentData as BoxParentData;
+      context.paintChild(child!, childParentData.offset + offset);
+    }
+  }
+}
+
+class ShirtWidget extends LeafRenderObjectWidget {
+  final Color color;
+  const ShirtWidget({
+    Key? key,
+    required this.color,
+  }) : super(key: key);
+
+  @override
+  RenderObject createRenderObject(BuildContext context) {
+    return _ShirtRenderBox(color: color);
+  }
+
+  @override
+  void updateRenderObject(
+      BuildContext context, covariant _ShirtRenderBox renderObject) {
+    renderObject.color = color;
+  }
+}
+
+class _ShirtRenderBox extends RenderBox {
+  Color _color;
+
+  Color get color => _color;
+
+  set color(Color value) {
+    if (value == color) return;
+    _color = color;
+    markNeedsPaint();
+  }
+
+  _ShirtRenderBox({required Color color}) : _color = color;
+
+  @override
+  bool get sizedByParent => true;
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    final canvas = context.canvas;
+
+    // DRAWiNG THE BACKGROUND
+    canvas.drawRect(offset & size, Paint()..color = color);
+  }
+
+  @override
+  Size computeDryLayout(BoxConstraints constraints) {
+    return Size(constraints.maxWidth, constraints.maxHeight);
+  }
+}
+
+*/

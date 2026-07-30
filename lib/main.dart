@@ -12,13 +12,13 @@ import 'package:appwrite/models.dart' as models;
 import 'dart:io';
 import 'dart:convert';
 import 'package:function_tree/function_tree.dart';
-
+import 'package:expressions/expressions.dart';
 
 
 
 const buildNumber = 19;
 const double arrowHeight = 7;
-const double arrowWidth = 7;
+const double arrowWidth = 25;
 const double lineWidth = 3;
 const double boxHeight = 25;
 const double chainYincrement = boxHeight + 10;
@@ -45,7 +45,7 @@ const kColumnFilename = 'filename';
 const kColumnJson = 'json';
 const imageFilenameHead = kEndpoint + '/storage/buckets';
 Group chosenGroup = nullGroup;
-NodeFunction chosenNodeFunction = NodeFunction.add;
+// NodeFunction chosenNodeFunction = NodeFunction.add;
 
 Client? client;
 Databases? appwriteDatabases;
@@ -162,21 +162,14 @@ enum NodeOperation {
   functionDoubleToString,
 }
 
-enum NodeFunction { nof, add, multiply, reciprocate }
+// enum NodeFunction { nof, add, multiply, reciprocate }
+//
+// const NodeFunction kNof = NodeFunction.nof;
+// const NodeFunction kAdd = NodeFunction.add;
+// const NodeFunction kMultiply = NodeFunction.multiply;
+// const NodeFunction kReciprocate = NodeFunction.reciprocate;
 
-const NodeFunction kNof = NodeFunction.nof;
-const NodeFunction kAdd = NodeFunction.add;
-const NodeFunction kMultiply = NodeFunction.multiply;
-const NodeFunction kReciprocate = NodeFunction.reciprocate;
 
-
-const Map<NodeFunction, String> nodeFunctionSymbol = {
-  kNof: '?',
-  kAdd: '+',
-  kMultiply: '*',
-  kReciprocate: '\u2339',
-
-};
 
 class NodeContents {
   int? uid;
@@ -189,7 +182,7 @@ class NodeContents {
   bool? isEndNode;
   bool? isHighlight;
   bool? isDataEntry;
-  NodeFunction? nodeFunction;
+
 
   //TextEditingController? textEditingController = TextEditingController(
   // text: '',
@@ -205,7 +198,7 @@ class NodeContents {
     this.isEndNode,
     this.isHighlight,
     required this.isDataEntry,
-    required this.nodeFunction,
+
   });
 
   Map<String, dynamic> toJson() {
@@ -220,7 +213,7 @@ class NodeContents {
       'isEndNode': isEndNode,
       'isHighlight': isHighlight,
       'isDataEntry': isDataEntry,
-      'nodeFunction': nodeFunction!.name,
+
     };
     //1print('(FF750)${this.uid}....${this.kind},,,,${m}');
     return m;
@@ -251,7 +244,7 @@ class NodeContents {
     isEndNode: json["isEndNode"] as bool,
     isHighlight: json['isHighlight'] as bool,
     isDataEntry: json['isDataEntry'] as bool,
-    nodeFunction: NodeFunction.values.byName(json['nodeFunction']),
+
   );
 
   /*LinkItem.fromJson(Map<String, dynamic> json)
@@ -277,7 +270,7 @@ class NodeContents {
       ), //json['dateTimeResult'] as DateTime,
       stringResult: json['stringResul'] as String,
       isDataEntry: json['isDataEntry'] as bool,
-      nodeFunction: NodeFunction.values.byName(json['nodeFunction']),
+
     );
   }
 }
@@ -304,7 +297,7 @@ NodeContents deserializeNodeContents(dynamic d) {
     isEndNode: nd['isEndNode'],
     isHighlight: nd['isHighlight'],
     isDataEntry: nd['isDataEntry'],
-    nodeFunction: NodeFunction.values.byName(nd['nodeFunction']),
+
   );
 }
 
@@ -322,6 +315,25 @@ Group deserializeGroupContents(dynamic d) {
 }
 
 class Spreadsheet {}
+
+class Arguments{
+  Map<String, dynamic> args = {};
+  Arguments(this.args);
+  Arguments.clear(){
+    args.clear();
+  }
+  void add(String name, dynamic value){
+    this.args[name] = value;
+  }
+  List<dynamic> values(){
+    List<dynamic> vv = [];
+    for(var v in this.args.values){
+      vv.add(v);
+    }
+    return vv;
+  }
+}
+
 
 List<int> getNodeUidsFromString(String s) {
   List<int> ni = [];
@@ -398,12 +410,12 @@ void dumpGraph() {
   print('1');
   for (var node in _controller.graph.nodes) {
     print(
-      '(FFDN)--x>${node.position.x}--y>${node.position.y}>>>>${node.data.uid}<<<<${node.data.input}££££${node.data.kind};;;;${node.data.doubleResult}::::${node.data.dateTimeResult}@@@@${node.data.stringResult}@@@@${(node.data.nodeFunction ?? kNof).name}',
+      '(FFDN)--x>${node.position.x}--y>${node.position.y}>>>>${node.data.uid}<<<<${node.data.input}££££${node.data.kind};;;;${node.data.doubleResult}::::${node.data.dateTimeResult}@@@@${node.data.stringResult}}',
     );
   }
   for (var edge in _controller.graph.edges) {
     print(
-      '(FFDE)${edge.a.data.uid}${edge.a.data.kind}....${edge.b.data.uid}${edge.b.data.kind},,,,${edge.edgeExtra.isActive}',
+      '(FFDE)${edge.a.data.uid}${edge.a.data.kind}....${edge.b.data.uid}${edge.b.data.kind},,,,${edge.edgeExtra.label}',
     );
     print(
       '(FFDF)${edge.a.position}||||${edge.a.mass}....${edge.b.position}!!!!${edge.b.mass},,,,${edge.distance}????${edge.angle}',
@@ -460,6 +472,24 @@ void setEdgeExtraIsActive({int? uidA, int? uidB, bool? isActive = true}) {
   if (i == null) return;
   _controller.graph.edges[i].edgeExtra.isActive = isActive;
 }
+
+
+
+String? getEdgeLabel({int? uidA, int? uidB}) {
+  //1print(
+  //1 '(FF760B)${uidA}....${uidB},,,,${getEdgeExtra(uidA: uidA, uidB: uidB)}',
+  //1 );
+  EdgeExtra? ee = getEdgeExtraFromNodeUids(uidA: uidA, uidB: uidB);
+  return ee!.label;
+}
+
+void setEdgeLabel({int? uidA, int? uidB, String? label}) {
+  int? i = getEdgeIntegerFromNodeUids(uidA: uidA, uidB: uidB);
+  if (i == null) return;
+  _controller.graph.edges[i].edgeExtra.label = label;
+}
+
+
 
 void addEdgeByData({
   required NodeContents? nodeA,
@@ -533,7 +563,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 uid: uid,
                 input: '',
                 isDataEntry: false,
-                nodeFunction: NodeFunction.add,
+
               );
             },
           ),
@@ -637,14 +667,6 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  void setControllerNodeFunction({int? uid, NodeFunction? value}) {
-    for (int i = 0; i < _controller.graph.nodes.length; i++) {
-      if (_controller.graph.nodes[i].data.uid == uid) {
-        _controller.graph.nodes[i].data.nodeFunction = value;
-        break;
-      }
-    }
-  }
 
   vector.Vector2? getNodePosition(int? uid) {
     vector.Vector2? pos;
@@ -676,14 +698,17 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  dynamic processEdge({dynamic total, Edge? edge, isFirstEdge = false}) {
+
+
+
+  /*List<dynamic>  processEdge({List<dynamic> totals = const [], Edge? edge, isFirstEdge = false}) {
     EdgeExtra? edgeExtra = getEdgeExtraFromNodeUids(
       uidA: edge!.a.data.uid,
       uidB: edge.b.data.uid,
     );
-    if (!edgeExtra!.isActive!) return total;
-    dynamic result = total;
-    const Map<NodeKind, NodeOperation> mapADouble = {
+    if (!edgeExtra!.isActive!) return totals;
+    List<dynamic> results = totals;
+   *//* const Map<NodeKind, NodeOperation> mapADouble = {
       kd: NodeOperation.functionDouble,
       kt: NodeOperation.functionDayToDate,
       ks: NodeOperation.functionDoubleToString,
@@ -712,36 +737,24 @@ class _MyHomePageState extends State<MyHomePage> {
     if ((aMap[aKind] != null) && (aMap[aKind]![bKind] != null)) {
       op = aMap[aKind]![bKind]!;
     }
-
-    print('(FG1${total}%%%%${aKind}....${bKind},,,,${op}');
+*//*
+    // print('(FG1${totals}%%%%${aKind}....${bKind},,,,${op}');
+    const op = NodeOperation.functionDouble;
     switch (op) {
       case (NodeOperation.noop):
         break;
       case (NodeOperation.functionDouble):
-        result = 0.0;
+        results = [];
         print(
           '(FF330A)${total}****${edge.a.data.doubleResult},,,,${result}....${edge.b.data.doubleResult}',
         );
-        switch (edge.b.data.nodeFunction) {
-          case (kAdd):
-            result = (total ?? 0.0) + (edge.a.data.doubleResult ?? 0.0);
-            break;
-          case (kMultiply):
-            result = (total ?? 1.0) * (edge.a.data.doubleResult ?? 0.0);
-            break;
-          case (kReciprocate):
-            result = (total ?? 1.0) / (edge.a.data.doubleResult ?? 0.0);
-            break;
 
-          default:
-            print('(FH100)${edge.b.data.nodeFunction!.name}');
-            result = null;
-            break;
-        }
+            result = (total ?? 0.0) + (edge.a.data.doubleResult ?? 0.0);
+
 
         //setControllerResult(uid: edge.b.data.uid, value: result);
         print('(FF330Z)${result}');
-        break;
+
       case (NodeOperation.functionDayToDate):
         result = DateTime.now();
         if ((total is DateTime) && (edge.a.data.kind == kd)) {
@@ -790,10 +803,10 @@ class _MyHomePageState extends State<MyHomePage> {
     );
     return result;
   }
-
+*/
   String getResult(NodeContents nodeContents) {
     if (nodeContents.kind == ke) {
-      return '4ERROR 4';//////////////////////////////////////////
+      return '4ERROR 4';
     }
 
     DateTime? totalDateTime = stringToDateTime(nodeContents.input ?? '');
@@ -814,29 +827,61 @@ class _MyHomePageState extends State<MyHomePage> {
     bool edgeFound = false;
     bool isFirstEdge = true;
     //dumpGraph();
+    Arguments args = Arguments.clear();
+    AsciiCodec ac = AsciiCodec();
+    String alpha = 'A';
+    Map<String, num> mapOfLabels = {};
+
     for (var edge in _controller.graph.edges) {
-      //1print(
-      //1  '(FF5)${nodeContents.uid}----${nodeContents.kind}++++${edge.a.data.uid}....${edge.a.data.kind}>>>>${edge.b.data.uid},,,,${edge.b.data.kind}',
-      //1);
+      print(
+        '(FF5)${nodeContents.uid}----${nodeContents.kind}++++${edge.a.data.uid}....${edge.a.data.kind}>>>>${edge.b.data.uid},,,,${edge.b.data.kind}',
+      );
       if (edge.b.data.uid == nodeContents.uid) {
         //1print('(FF51)${nodeContents.kind}');
-        Node? nn;
-        nn = edge.a;
-        total = processEdge(total: total, edge: edge, isFirstEdge: isFirstEdge);
-        edgeFound = true;
-        if (total == null) edgeFound = false;
+        // args.add(alpha, edge.a.data.doubleResult);
+        // alpha = ac.decode([ac.encode(alpha).first + 1]);
+        if ((edge.edgeExtra.label?? '') != '') {
+          mapOfLabels[edge.edgeExtra.label!] = (edge.a.data.doubleResult?? 0) as num;
+          print('(FFE1)${edge.edgeExtra.label}....${edge.a.data.doubleResult},,,');
+        }
         isFirstEdge = false;
+        edgeFound = true;
       }
     }
+    print('(FFE4)${edgeFound}');
     if (edgeFound) {
-      setControllerResult(uid: nodeContents.uid, value: total);
-    } else {
+      print('(FFE2)${nodeContents.input}....');
+
+      /* ////////////CODE FOR UNLABELLED EDGES
+
+
+      Map<String, num> n = {};
+      for (var k in args.args.keys){
+        n[k] = (args.args[k]?? 0) as num;
+      }*/
+      String? input = nodeContents.input;
+      if ((input ?? '') == '') {
+        total = 0.0;
+      } else {
+        try {
+          Expression expression = Expression.parse(input!);
+          final evaluator = const ExpressionEvaluator();
+          total = evaluator.eval(expression, mapOfLabels);
+          print('(FFE3A)${mapOfLabels}....${expression}');
+        } on Exception catch (e) {
+          total = 0.0;
+          print('(FFE3A)${e}');
+        }
+        print('(FFE3C)${mapOfLabels}....${args.values()},,,,${total}');
+      }
+
+
+    }
       setControllerResult(
         uid: nodeContents.uid,
-        value: double.tryParse(nodeContents.input ?? '') ?? 0.0,
+        value: total, //double.tryParse(nodeContents.input ?? '') ?? 0.0,
       );
-      total = double.tryParse(nodeContents.input ?? '') ?? 0.0;
-    }
+     // total = double.tryParse(nodeContents.input ?? '') ?? 0.0;
     switch (nodeContents.kind) {
       case (ke):
         return '1ERROR 1';
@@ -855,6 +900,12 @@ class _MyHomePageState extends State<MyHomePage> {
       case (ks):
         if (total is double){
           total = total.toString();
+        }
+        if (total is num){
+          total = total.toString();
+        }
+        if (total is bool){
+          total = '${total}';
         }
         return total;
       case (null):
@@ -1124,7 +1175,7 @@ class _MyHomePageState extends State<MyHomePage> {
                               uid: _uidMaster,
                               input: '',
                               isDataEntry: false,
-                              nodeFunction: NodeFunction.add,
+
                             ),
                           );
                           _uidMaster++;
@@ -1134,51 +1185,6 @@ class _MyHomePageState extends State<MyHomePage> {
                         },
                       ),
 
-                      Container(
-                        width: 300,
-                        height: 34,
-                        child: Row(
-                          children: [
-                            Text('Function: '),
-                            SizedBox(width: 10),
-                            Container(
-                              width: 120,
-                              height: 30,
-
-                              child: DropdownButton<NodeFunction>(
-                                //  key: ValueKey(widget),
-                                value: data.nodeFunction,
-                                hint: const Text('Please select group'),
-                                items: NodeFunction.values
-                                    .map<DropdownMenuItem<NodeFunction>>((
-                                      NodeFunction item,
-                                    ) {
-                                      return DropdownMenuItem<NodeFunction>(
-                                        value: item,
-                                        child: Text(item.name),
-                                      );
-                                    })
-                                    .toList(),
-                                elevation: 2,
-                                onChanged: (value) {
-                                  setState(() {
-                                    setControllerNodeFunction(
-                                      uid: data.uid,
-                                      value: value,
-                                    );
-                                  });
-                                  setStateMain(() {});
-                                  print(
-                                    '(FH90)${value!.name}',
-                                  );
-                                },
-                                isExpanded: true,
-                                focusColor: Colors.transparent,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
                     ],
                   ),
                   Row(
@@ -1306,7 +1312,7 @@ class _MyHomePageState extends State<MyHomePage> {
                           uid: _uidMaster,
                           kind: currentNodeContents.kind,
                           isDataEntry: false,
-                          nodeFunction: NodeFunction.add,
+
                         );
                         /*_controller.*/
                         addEdgeByData(
@@ -1503,28 +1509,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
                     child: Row(
                       children: [
-                        Container(
-                          width: 24,
-                          height: 24,
 
-                          child: Center(
-                            child: Text(
-                              nodeFunctionSymbol[data.nodeFunction] ?? '£',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 18,
-                              ),
-                            ),
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.black, //setBoxColor(data),
-                            borderRadius: BorderRadius.circular(
-                              (data.isDataEntry ?? false) ? 10 : 1,
-                            ),
-                            border: Border.all(color: color, width: 1),
-                          ),
-                        ),
                         Container(
                           width: boxWidth + (boxPadding * 2) + 30,
                           height: 24,
@@ -1568,32 +1553,22 @@ class _MyHomePageState extends State<MyHomePage> {
                   if ((isUidEqual(edgeOutputNodeContentsA, a)) &&
                       (isUidEqual(edgeOutputNodeContentsB, b)))
                     color = Colors.green;
-                  //1print(
-                  //1 '(FF762)${a.uid}....${b.uid},,,,${isEdgeActive(uidA: a.uid, uidB: b.uid)}',
-                  //1);
+                  print(
+                  '(FF762)${a.uid}....${b.uid},,,,${isEdgeActive(uidA: a.uid, uidB: b.uid)}');
                   //dumpGraph();
                   if (!isEdgeActive(uidA: a.uid, uidB: b.uid)) {
                     color = Colors.grey;
                   }
-                  return /*GestureDetector(
-                    onTap: () {
-                      final edge = "$a <-> $b";
-                      setState(() {
-                        if (_edges.contains(edge)) {
-                          _edges.remove(edge);
-                        } else {
-                          _edges.add(edge);
-                        }
-                        //1print("onTap $a <-$distance-> $b");
-                      });
-                    },
-                    child:*/ arrowEdge(
+                  Widget aE =  arrowEdge(
                     distance: distance,
                     a: a,
                     b: b,
                     color: color,
+                    label: getEdgeLabel(uidA: a.uid, uidB: b.uid)
                     // ),
+
                   );
+                  return aE;
                 },
               ),
             ),
@@ -1617,6 +1592,7 @@ class _MyHomePageState extends State<MyHomePage> {
     NodeContents? b,
     double distance = 0,
     color = Colors.black87,
+    required String? label
   }) {
     double angle = 0;
     bool reverse = false;
@@ -1624,22 +1600,35 @@ class _MyHomePageState extends State<MyHomePage> {
       angle = pi;
       reverse = true;
     }
-    //1print('(FF2)${distance}....${reverse}');
+    print('(FF2)${distance}....${reverse}');
 
-    return Transform.rotate(
+    Widget arrow = Transform.rotate(
       angle: angle,
       child: ClipPath(
         clipper: DrawArrow(a: a, b: b),
         child: GestureDetector(
+
           onTap: () {
             showDialog<double>(
               context: context,
               builder: (BuildContext context) {
+                TextEditingController labelController = TextEditingController(
+                  text: label?? '',
+                );
                 return AlertDialog(
                   title: const Text('Edge operations'),
                   content: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: <Widget>[
+                      TextField(controller: labelController, onChanged: (value) {}),
+
+                    ElevatedButton(
+                      child: const Text('Set label'),
+                      onPressed: () {
+                        setEdgeLabel(uidA: a.uid, uidB: b.uid, label: labelController.text);
+                        Navigator.of(context).pop();
+                      },
+                    ),
                       Row(
                         children: [
                           ElevatedButton(
@@ -1733,6 +1722,12 @@ class _MyHomePageState extends State<MyHomePage> {
           ),
         ),
       ),
+    );
+    return Container(
+      child: Column(
+        children:[Text(getEdgeLabel(uidA: a.uid, uidB: b.uid)?? '.'),
+        arrow]
+      )
     );
   }
 
@@ -2312,8 +2307,7 @@ class _MyHomePageState extends State<MyHomePage> {
     NodeContents n = NodeContents(
       uid: current_uid,
       kind: kind,
-      isDataEntry: isDataEntry,
-      nodeFunction: NodeFunction.add,
+      isDataEntry: false,
     );
     _controller.addNode(n);
     print('(FJ51)${n.uid}....${n.kind}');

@@ -7,18 +7,21 @@ import 'node.dart';
 class EdgeExtra {
 
   bool? isActive;
+  String? label;
   EdgeExtra({this.isActive});
 
   Map<String, dynamic> toJson() {
     Map<String, dynamic> m = {
       'isActive': isActive,
+      'label': label,
     };
     print('(FF900)${this.isActive}////${m}');
     return m;
   }
 
   EdgeExtra.fromJson(Map<String, dynamic> json)
-      : isActive = (json['index'] as bool);
+      : isActive = (json['index'] as bool),
+       label = (json['index'] as String);
 }
 
 class Edge {
