@@ -79,7 +79,7 @@ class ForceDirectedGraph {
     return node;
   }
 
-  Node? getNodeFromIndexLocal(int? uid) {
+  Node? getNodeFromUidLocal(int? uid) {
     print('(FF4020)${uid}....${nodes.length}');
     for (int i = 0; i < nodes.length; i++) {
       print('(FF4021)${uid}....${nodes[i].data.uid},,,,${nodes[i]}');
@@ -113,12 +113,14 @@ class ForceDirectedGraph {
     }
     //The argument type 'NodeDataDeserializer<T>?' can't be assigned to the parameter type 'NodeDataDeserializer<Node<dynamic>>?'.
     for (final edgeData in decodedJson['edges']) {
-      print('(FF1004)${edgeData}>>>>${deserializeData3.runtimeType}');
+
       Node nodeAFromMap = nodeFromMap(edgeData['a'], deserializeData3);
       Node nodeBFromMap = nodeFromMap(edgeData['b'], deserializeData3);
-      EdgeExtra ee = EdgeExtra(isActive: edgeData['edgeExtra']['isActive']);
-      Node nodeA = getNodeFromIndexLocal(nodeAFromMap.data.uid)!;
-      Node nodeB = getNodeFromIndexLocal(nodeBFromMap.data.uid)!;
+      EdgeExtra ee = EdgeExtra(isActive: edgeData['edgeExtra']['isActive'],
+         label: edgeData['edgeExtra']['label']);
+      print('(FF1004)${edgeData}>>>>${deserializeData3.runtimeType}????${ee}');
+      Node nodeA = getNodeFromUidLocal(nodeAFromMap.data.uid)!;
+      Node nodeB = getNodeFromUidLocal(nodeBFromMap.data.uid)!;
       Edge edge = Edge(nodeA, nodeB, ee);
       edges.add(edge);
       print('(FF1005)${nodeA}....${nodeB},,,,${edge}');

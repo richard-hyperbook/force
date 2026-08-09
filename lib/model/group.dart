@@ -6,6 +6,7 @@ class Group {
   List<int>? nodeUids;
   bool? isVisible;
   int? groupNodeUid;
+  bool? isCollapsed;
 
   Group({this.name, this.nodeUids, this.isVisible, this.groupNodeUid});
 
@@ -15,6 +16,7 @@ class Group {
       'nodeUids': getStringFromNodeUids(nodeUids!),
       'isVisible': isVisible,
       'groupNodeIndex': groupNodeUid,
+      'isCollapsed': isCollapsed,
     };
     print('(FH84)${this.name}....${this.nodeUids},,,,${this.groupNodeUid}@@@@${m}');
     return m;

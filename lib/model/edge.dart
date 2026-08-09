@@ -8,7 +8,7 @@ class EdgeExtra {
 
   bool? isActive;
   String? label;
-  EdgeExtra({this.isActive});
+  EdgeExtra({this.isActive, this.label});
 
   Map<String, dynamic> toJson() {
     Map<String, dynamic> m = {
@@ -20,8 +20,8 @@ class EdgeExtra {
   }
 
   EdgeExtra.fromJson(Map<String, dynamic> json)
-      : isActive = (json['index'] as bool),
-       label = (json['index'] as String);
+      : isActive = (json['isActive'] as bool),
+       label = (json['label'] as String);
 }
 
 class Edge {
