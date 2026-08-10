@@ -172,4 +172,10 @@ class ForceDirectedGraphController extends ChangeNotifier {
   String toJson() {
     return _graph.toJson() ;
   }
+
+  String groupToJson({
+    required String groupName,
+  }) {
+    return _graph.groupToJson(groupName: groupName);
+  }
 }

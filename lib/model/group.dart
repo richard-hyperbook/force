@@ -7,8 +7,10 @@ class Group {
   bool? isVisible;
   int? groupNodeUid;
   bool? isCollapsed;
+  String? incomingLabels;
+  String? outgoingLabels;
 
-  Group({this.name, this.nodeUids, this.isVisible, this.groupNodeUid});
+  Group({this.name, this.nodeUids, this.isVisible, this.groupNodeUid, this.incomingLabels, this.outgoingLabels});
 
   Map<String, dynamic> toJson() {
     Map<String, dynamic> m = {
@@ -17,6 +19,9 @@ class Group {
       'isVisible': isVisible,
       'groupNodeIndex': groupNodeUid,
       'isCollapsed': isCollapsed,
+      'incomingLabels': incomingLabels,
+      'outgoingLabels': outgoingLabels,
+
     };
     print('(FH84)${this.name}....${this.nodeUids},,,,${this.groupNodeUid}@@@@${m}');
     return m;

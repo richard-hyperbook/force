@@ -113,11 +113,12 @@ class ForceDirectedGraph {
     }
     //The argument type 'NodeDataDeserializer<T>?' can't be assigned to the parameter type 'NodeDataDeserializer<Node<dynamic>>?'.
     for (final edgeData in decodedJson['edges']) {
-
       Node nodeAFromMap = nodeFromMap(edgeData['a'], deserializeData3);
       Node nodeBFromMap = nodeFromMap(edgeData['b'], deserializeData3);
-      EdgeExtra ee = EdgeExtra(isActive: edgeData['edgeExtra']['isActive'],
-         label: edgeData['edgeExtra']['label']);
+      EdgeExtra ee = EdgeExtra(
+        isActive: edgeData['edgeExtra']['isActive'],
+        label: edgeData['edgeExtra']['label'],
+      );
       print('(FF1004)${edgeData}>>>>${deserializeData3.runtimeType}????${ee}');
       Node nodeA = getNodeFromUidLocal(nodeAFromMap.data.uid)!;
       Node nodeB = getNodeFromUidLocal(nodeBFromMap.data.uid)!;
@@ -210,7 +211,9 @@ class ForceDirectedGraph {
           other,
           k: config.repulsion,
         );
-        print('(FJ71)${repulsionForce}....${node.data.uid},,,,${other.data.uid}');
+        print(
+          '(FJ71)${repulsionForce}....${node.data.uid},,,,${other.data.uid}',
+        );
         node.applyForce(repulsionForce);
       }
     }
@@ -223,7 +226,9 @@ class ForceDirectedGraph {
           .calculateAttractionForceDirectionA();
       final fa = attractionForceDirectionA * attractionForce;
 
-      print('(FJ72)${fa}....${attractionForceDirectionA},,,,${attractionForce}++++${edge.a.data.uid}----${edge.b.data.uid}}');
+      print(
+        '(FJ72)${fa}....${attractionForceDirectionA},,,,${attractionForce}++++${edge.a.data.uid}----${edge.b.data.uid}}',
+      );
       edge.a.applyForce(fa);
       edge.b.applyForce(-fa);
     }
@@ -285,6 +290,64 @@ class ForceDirectedGraph {
           )
           .toList(),
       'groups': groups.map((e) => e.toJson()).toList(),
+    });
+  }
+
+  String groupToJson({
+    NodeDataSerializer? serializeData,
+    required String groupName,
+  }) {
+    print('(FF2011)${serializeData}....${nodes},,,,${edges}****${groupName}');
+    Group? group = getGroupFromGroupName(groupName);
+    List<Node> nodesOfGroup = [];
+    for (int i = 0; i < nodes.length; i++) {
+      if ((group!.nodeUids)!.contains(nodes[i].data.uid!)) {
+        nodesOfGroup.add(nodes[i]);
+      }
+    }
+    List<Edge> edgesOfGroup = [];
+    for (int i = 0; i < edges.length; i++) {
+      int uidA = edges[i].a.data.uid ?? -1;
+      int uidB = edges[i].b.data.uid ?? -1;
+      if (((group!.nodeUids)!.contains(uidA)) &&
+          ((group!.nodeUids)!.contains(uidB))) {
+        edgesOfGroup.add(edges[i]);
+      }
+    }
+
+    return jsonEncode({
+      'nodes': nodesOfGroup
+          .map(
+            (e) => {
+              'data': serializeData == null ? e.data : serializeData(e.data),
+              'position': {'x': e.position.x, 'y': e.position.y},
+            },
+          )
+          .toList(),
+      'edges': edgesOfGroup
+          .map(
+            (e) => {
+              'a': /*serializeData == null ? e.a.data :*/ /*serializeData(e.a.data)*/
+                  {
+                    'data': serializeData == null
+                        ? e.a.data
+                        : serializeData(e.a.data),
+                    'position': {'x': e.a.position.x, 'y': e.a.position.y},
+                  },
+              'b': /*serializeData == null ? e.b.data : */ /*serializeData(e.a.data)*/
+                  {
+                    'data': serializeData == null
+                        ? e.b.data
+                        : serializeData(e.b.data),
+                    'position': {'x': e.b.position.x, 'y': e.b.position.y},
+                  },
+
+              // 'b': serializeData == null ? e.b.data : serializeData(e.b.data),
+              'edgeExtra': e.edgeExtra.toJson(),
+            },
+          )
+          .toList(),
+      'groups': [group].map((e) => e!.toJson()).toList(),
     });
   }
 }

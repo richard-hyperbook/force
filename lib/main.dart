@@ -14,7 +14,7 @@ import 'dart:convert';
 import 'package:function_tree/function_tree.dart';
 import 'package:expressions/expressions.dart';
 
-const buildNumber = 20;
+const buildNumber = 21;
 const double arrowHeight = 5;
 const double arrowWidth = 15;
 const double lineWidth = 2;
@@ -39,6 +39,7 @@ const kDevKey =
 const kBucketID = '6a37881000326addb17a';
 const kDatabaseID = '6a37a61700206fef051a';
 const kSpreadsheets = 'spreadsheets';
+const kGroups = 'groups';
 const kColumnFilename = 'filename';
 const kColumnJson = 'json';
 const imageFilenameHead = kEndpoint + '/storage/buckets';
@@ -393,6 +394,16 @@ Group? getGroupFromNodeUid(int? nodeUid) {
   return null;
 }
 
+Group? getGroupFromGroupName(String? groupName) {
+  if (groupName == null) return null;
+  for (int i = 0; i < _controller.graph.groups.length; i++) {
+    if (groupName == _controller.graph.groups[i].name) {
+      return _controller.graph.groups[i];
+    }
+  }
+  return null;
+}
+
 late final ForceDirectedGraphController _controller;
 
 List<EdgeExtra> _edgeExtras = [];
@@ -401,20 +412,22 @@ void dumpGraph() {
   print('1');
   for (var node in _controller.graph.nodes) {
     print(
-      '(FFDN)--x>${node.position.x}--y>${node.position.y}>>>>${node.data.uid}<<<<${node.data.input}££££${node.data.kind};;;;${node.data.doubleResult}::::${node.data.dateTimeResult}@@@@${node.data.stringResult}}',
+      //'(FFDN)--x>${node.position.x}--y>${node.position.y}>>>>${node.data.uid}<<<<${node.data.input}££££${node.data.kind};;;;${node.data.doubleResult}::::${node.data.dateTimeResult}@@@@${node.data.stringResult}}',
+      '(FFDN)${node.data.uid}<<<<${node.data.input}££££${node.data.kind};;;;${node.data.doubleResult}::::${node.data.dateTimeResult}@@@@${node.data.stringResult}}',
     );
   }
   for (var edge in _controller.graph.edges) {
+    // print(
+    //    '(FFDE)${edge.a.data.uid}${edge.a.data.kind}....${edge.b.data.uid}${edge.b.data.kind},,,,${edge.edgeExtra.label}',
+    //  );
     print(
-      '(FFDE)${edge.a.data.uid}${edge.a.data.kind}....${edge.b.data.uid}${edge.b.data.kind},,,,${edge.edgeExtra.label}',
-    );
-    print(
-      '(FFDF)${edge.a.position}||||${edge.a.mass}....${edge.b.position}!!!!${edge.b.mass},,,,${edge.distance}????${edge.angle}',
+      //'(FFDF)${edge.a.position}||||${edge.a.mass}....${edge.b.position}!!!!${edge.b.mass},,,,${edge.distance}????${edge.angle}',
+      '(FFDF)${edge.a.data.uid},,,,${edge.b.data.uid}',
     );
   }
   for (int i = 0; i < _controller.graph.groups.length; i++) {
     print(
-      '(FFDG)${_controller.graph.groups[i].name}....${_controller.graph.groups[i].nodeUids},,,,${_controller.graph.groups[i].isVisible}||||${_controller.graph.groups[i].groupNodeUid}',
+      '(FFDG)${_controller.graph.groups[i].name}....${_controller.graph.groups[i].nodeUids},,,,${_controller.graph.groups[i].isVisible}||||${_controller.graph.groups[i].groupNodeUid}::::${_controller.graph.groups[i].isCollapsed}',
     );
   }
 }
@@ -721,20 +734,25 @@ class _MyHomePageState extends State<MyHomePage> {
       );
       if (edge.b.data.uid == nodeContents.uid) {
         print('(FF51)${nodeContents.kind}');
-        // args.add(alpha, edge.a.data.doubleResult);
-        // alpha = ac.decode([ac.encode(alpha).first + 1]);
         if ((edge.edgeExtra.label ?? '') != '') {
-          if (edge.a.data.kind == kg){
-            for (int j = 0; j < _controller.graph.edges.length; j++){
-              if (_controller.graph.edges[j].b.data.uid == edge.a.data.uid){
-                mapOfLabels[edge.edgeExtra.label!] =
-                (_controller.graph.edges[j].a.data.doubleResult ?? 0) as num;
-                print('(FFM1)${edge.edgeExtra.label}....${_controller.graph.edges[j].a.data.doubleResult}');
+          if (edge.a.data.kind == kg) {
+            for (int j = 0; j < _controller.graph.edges.length; j++) {
+              if (_controller.graph.edges[j].b.data.uid == edge.a.data.uid) {
+                if (_controller.graph.edges[j].edgeExtra.label ==
+                    edge.edgeExtra.label) {
+                  mapOfLabels[edge.edgeExtra.label!] =
+                      (_controller.graph.edges[j].a.data.doubleResult ?? 0)
+                          as num;
+                  print(
+                    '(FFM1)${edge.edgeExtra.label}....${_controller.graph.edges[j].a.data.doubleResult}',
+                  );
+                  break;
+                }
               }
             }
           } else {
             mapOfLabels[edge.edgeExtra.label!] =
-            (edge.a.data.doubleResult ?? 0) as num;
+                (edge.a.data.doubleResult ?? 0) as num;
           }
           print(
             '(FFE1)${edge.edgeExtra.label}....${edge.a.data.doubleResult},,,',
@@ -1188,6 +1206,8 @@ class _MyHomePageState extends State<MyHomePage> {
                       ),
                     ],
                   ),
+                  Row(
+                    children:[
                   ElevatedButton(
                     child: const Text('Highlight node'),
                     onPressed: () {
@@ -1198,7 +1218,16 @@ class _MyHomePageState extends State<MyHomePage> {
                       Navigator.of(context).pop();
                     },
                   ),
+                  (data.kind == kg) ? ElevatedButton(
+                      child: const Text('Goto group'),
+                      onPressed: () {
+                        chosenGroup = getGroupFromNodeUid(data.uid)!;
+                        debugPrint('(FFP1)${chosenGroup.name}');
+                        Navigator.of(context).pop();
+                        showGroupsDialog();
 
+                      },
+                  ) : Container(),
                   ElevatedButton(
                     child: const Text('Make chain'),
                     onPressed: () {
@@ -1237,6 +1266,8 @@ class _MyHomePageState extends State<MyHomePage> {
 
                       Navigator.of(context).pop();
                     },
+                  ),
+                      ]
                   ),
                 ],
               ),
@@ -1278,11 +1309,11 @@ class _MyHomePageState extends State<MyHomePage> {
           return Text('G: ' + groupName);
         case (kd):
           print('(FFQ1)${data.uid}....${getResult(data)}');
-          return Text('${inputString}>d${getResult(data)}');
+          return Text('${inputString}>${getResult(data)}');
         case (kt):
-          return Text('${inputString}>t${getResult(data)}');
+          return Text('${inputString}>${getResult(data)}');
         case (ks):
-          return Text('${inputString}>s${getResult(data)}');
+          return Text('${inputString}>${getResult(data)}');
         case (null):
           return Text('NULL');
       }
@@ -1401,7 +1432,8 @@ class _MyHomePageState extends State<MyHomePage> {
                       ) {
                         if ((_controller.graph.groups[i].nodeUids![j] ==
                                 data.uid) &&
-                            (_controller.graph.groups[i].isCollapsed?? false)) {
+                            (_controller.graph.groups[i].isCollapsed ??
+                                false)) {
                           isInCollapsedGroup = true;
                           break;
                         }
@@ -2164,22 +2196,31 @@ class _MyHomePageState extends State<MyHomePage> {
                     },
                   ),
 
-                  /* CheckboxListTile(
-                    title: Text('Is group visible?'),
-                    tristate: true,
-                    value: chosenGroupIsVisible,
-                    onChanged: (value) {
-                      if (chosenGroup != null) {
-                        setState(() {
-                          chosenGroupIsVisible = value;
-                          setGroupIsVisible(
-                            groupName: chosenGroup!.name,
-                            value: value,
-                          );
-                        });
-                      }
+
+                  ElevatedButton(
+                    onPressed: () async {
+                      print('(FH99)');
+                      String json = _controller.groupToJson(groupName: chosenGroup.name!);
+print('(FH99)${json}');
+                      var result = await databases!.createDocument(
+                        databaseId: kDatabaseID,
+                        collectionId: kGroups,
+                        documentId: ID.unique(),
+                        data: {
+                          "filename":
+                          chosenGroup.name,
+                          "json": json,
+                          "buildNumber": buildNumber,
+                        },
+                        // permissions: [Permission.read(Role.any())], // optional
+                        // transactionId: '<TRANSACTION_ID>', // optional
+                      );
+                      Navigator.of(context).pop();
                     },
-                  ),*/
+                    child: Text('Save group'),
+                  ),
+
+
                   Divider(),
                   TextField(
                     controller: groupNameTextEditingController,
@@ -2218,12 +2259,13 @@ class _MyHomePageState extends State<MyHomePage> {
                       debugPrint('(FI6)${createGroupButtonCaption}');
                       bool found = false;
                       for (
-                        int i = 0;
-                        i < _controller.graph.groups.length;
-                        i++
+                      int i = 0;
+                      i < _controller.graph.groups.length;
+                      i++
                       ) {
                         debugPrint(
-                          '(FI2)${groupNameTextEditingController.text}....${_controller.graph.groups[i].name}',
+                          '(FI2)${groupNameTextEditingController
+                              .text}....${_controller.graph.groups[i].name}',
                         );
                         if (groupNameTextEditingController.text ==
                             _controller.graph.groups[i].name) {
@@ -2232,7 +2274,6 @@ class _MyHomePageState extends State<MyHomePage> {
                         }
                       }
                       if (found) {
-                        debugPrint('(FI1)');
                         setState(() {
                           createGroupButtonCaption =
                               kCreateGroupButtonCaptionGroupExists;
@@ -2246,12 +2287,24 @@ class _MyHomePageState extends State<MyHomePage> {
                               isVisible: true,
                             ),
                           );
+                          setGroupIsCollapsed(
+                              groupName: groupNameTextEditingController.text,
+                              isCollapsed: false);
                           chosenGroup = _controller.graph.groups.last;
+                          int groupNodeUid = createNode(kind: kg,
+                              isDataEntry: false);
+                          setGroupNodeUid(
+                            groupName: chosenGroup.name,
+                            nodeUid: groupNodeUid,
+                          );
+                          debugPrint('(FI1)${groupNodeUid}....${chosenGroup
+                              .name}');
                         });
                         Navigator.of(context).pop();
                       }
                     },
                     child: Text(createGroupButtonCaption),
+
                   ),
                 ],
               ),
