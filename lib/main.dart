@@ -14,7 +14,7 @@ import 'dart:convert';
 import 'package:function_tree/function_tree.dart';
 import 'package:expressions/expressions.dart';
 
-const buildNumber = 21;
+const buildNumber = 22;
 const double arrowHeight = 5;
 const double arrowWidth = 15;
 const double lineWidth = 2;
@@ -495,9 +495,10 @@ void addEdgeByData({
   required bool? isActive,
   required String? label,
 }) {
+  debugPrint('(FQ4)${nodeA!.uid}!${nodeB!.uid}');
   _controller.addEdgeByData(
-    nodeA!,
-    nodeB!,
+    nodeA,
+    nodeB,
     EdgeExtra(isActive: isActive, label: label),
   );
 
@@ -1207,67 +1208,72 @@ class _MyHomePageState extends State<MyHomePage> {
                     ],
                   ),
                   Row(
-                    children:[
-                  ElevatedButton(
-                    child: const Text('Highlight node'),
-                    onPressed: () {
-                      setState(() {
-                        setControllerIsHighlight(uid: data.uid!, value: true);
-                      });
+                    children: [
+                      ElevatedButton(
+                        child: const Text('Highlight node'),
+                        onPressed: () {
+                          setState(() {
+                            setControllerIsHighlight(
+                              uid: data.uid!,
+                              value: true,
+                            );
+                          });
 
-                      Navigator.of(context).pop();
-                    },
-                  ),
-                  (data.kind == kg) ? ElevatedButton(
-                      child: const Text('Goto group'),
-                      onPressed: () {
-                        chosenGroup = getGroupFromNodeUid(data.uid)!;
-                        debugPrint('(FFP1)${chosenGroup.name}');
-                        Navigator.of(context).pop();
-                        showGroupsDialog();
+                          Navigator.of(context).pop();
+                        },
+                      ),
+                      (data.kind == kg)
+                          ? ElevatedButton(
+                              child: const Text('Goto group'),
+                              onPressed: () {
+                                chosenGroup = getGroupFromNodeUid(data.uid)!;
+                                debugPrint('(FFP1)${chosenGroup.name}');
+                                Navigator.of(context).pop();
+                                showGroupsDialog();
+                              },
+                            )
+                          : Container(),
+                      ElevatedButton(
+                        child: const Text('Make chain'),
+                        onPressed: () {
+                          //1print('(FF700)');
+                          NodeContents currentNodeContents = data;
+                          double rootNodeX = getNodePosition(data.uid)!.x;
+                          double rootNodeY = getNodePosition(data.uid)!.y;
+                          int? replicationCount =
+                              int.tryParse(textEditingController!.text) ?? 1;
+                          for (int i = 0; i < replicationCount; i++) {
+                            NodeContents nextNodeContents = NodeContents(
+                              uid: _uidMaster,
+                              kind: currentNodeContents.kind,
+                              isDataEntry: false,
+                            );
+                            /*_controller.*/
+                            addEdgeByData(
+                              nodeA: currentNodeContents,
+                              nodeB: nextNodeContents,
+                              isActive: true,
+                              label: '',
+                            );
+                            vector.Vector2 nextPos = vector.Vector2(
+                              rootNodeX,
+                              rootNodeY -
+                                  ((i.toDouble() + 1) * chainYincrement),
+                            );
+                            //1print('(FF747)${rootNodeX}....${rootNodeY},,,,${nextPos}');
+                            setNodePosition(nextNodeContents.uid, nextPos);
+                            setControllerInput(
+                              uid: nextNodeContents.uid,
+                              value: currentNodeContents.input,
+                            );
+                            _uidMaster++;
+                            currentNodeContents = nextNodeContents;
+                          }
 
-                      },
-                  ) : Container(),
-                  ElevatedButton(
-                    child: const Text('Make chain'),
-                    onPressed: () {
-                      //1print('(FF700)');
-                      NodeContents currentNodeContents = data;
-                      double rootNodeX = getNodePosition(data.uid)!.x;
-                      double rootNodeY = getNodePosition(data.uid)!.y;
-                      int? replicationCount =
-                          int.tryParse(textEditingController!.text) ?? 1;
-                      for (int i = 0; i < replicationCount; i++) {
-                        NodeContents nextNodeContents = NodeContents(
-                          uid: _uidMaster,
-                          kind: currentNodeContents.kind,
-                          isDataEntry: false,
-                        );
-                        /*_controller.*/
-                        addEdgeByData(
-                          nodeA: currentNodeContents,
-                          nodeB: nextNodeContents,
-                          isActive: true,
-                          label: '',
-                        );
-                        vector.Vector2 nextPos = vector.Vector2(
-                          rootNodeX,
-                          rootNodeY - ((i.toDouble() + 1) * chainYincrement),
-                        );
-                        //1print('(FF747)${rootNodeX}....${rootNodeY},,,,${nextPos}');
-                        setNodePosition(nextNodeContents.uid, nextPos);
-                        setControllerInput(
-                          uid: nextNodeContents.uid,
-                          value: currentNodeContents.input,
-                        );
-                        _uidMaster++;
-                        currentNodeContents = nextNodeContents;
-                      }
-
-                      Navigator.of(context).pop();
-                    },
-                  ),
-                      ]
+                          Navigator.of(context).pop();
+                        },
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -1554,6 +1560,15 @@ class _MyHomePageState extends State<MyHomePage> {
     for (int i = 0; i < _controller.graph.edges.length; i++) {
       if ((_controller.graph.edges[i].a.data.uid == a!.uid) &&
           (_controller.graph.edges[i].b.data.uid == b!.uid)) {
+        _controller.deleteEdge(_controller.graph.edges[i]);
+      }
+    }
+  }
+
+  void deleteEdgeByUid({int? uidA, int? uidB}) {
+    for (int i = 0; i < _controller.graph.edges.length; i++) {
+      if ((_controller.graph.edges[i].a.data.uid == uidA!) &&
+          (_controller.graph.edges[i].b.data.uid == uidB!)) {
         _controller.deleteEdge(_controller.graph.edges[i]);
       }
     }
@@ -1876,6 +1891,14 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
+  int? getGroupIndexFromName(String groupName) {
+    for (int i = 0; i < _controller.graph.groups.length; i++) {
+      if (_controller.graph.groups[i].name == groupName) {
+        return i;
+      }
+    }
+  }
+
   void clearAllNodeStatus() {
     setState(() {
       //1print('(FF16)');
@@ -1886,6 +1909,69 @@ class _MyHomePageState extends State<MyHomePage> {
         setControllerIsHighlight(uid: uid, value: false);
       }
     });
+  }
+
+  void reconnectNodesThroughGroupNode(int groupNodeUid) {
+    for (int i = 0; i < _controller.graph.edges.length; i++) {
+      Edge edge = _controller.graph.edges[i];
+      int uidA = edge.a.data.uid!;
+      int uidB = edge.b.data.uid!;
+      bool aInGroup = chosenGroup.nodeUids!.contains(uidA);
+      bool bInGroup = chosenGroup.nodeUids!.contains(uidB);
+      bool aOrBIsGroupNode = ((chosenGroup.groupNodeUid == uidA) || (chosenGroup.groupNodeUid == uidB));
+      debugPrint('(FQ1)${i}.${edge.edgeExtra.label},${uidA};${uidB}:${aInGroup}@${bInGroup}');
+      if (aOrBIsGroupNode || (aInGroup && bInGroup) || (!aInGroup && !bInGroup)) {
+        //DO NOTHING
+      } else {
+        int groupIndex = getGroupIndexFromName(chosenGroup.name!)!;
+        if (aInGroup) {
+          //_controller.graph.edges[i].b.data.uid = groupNodeUid;
+          debugPrint('(FQ6)${groupIndex}|${groupNodeUid}');
+          // _controller.graph.edges[i].a.data.uid = groupNodeUid;
+          addEdgeByData(
+            nodeA: getNodeFromUid(uidA)!.data,
+            nodeB: getNodeFromUid(groupNodeUid)!.data,
+            isActive: edge.edgeExtra.isActive,
+            label: edge.edgeExtra.label,
+          );
+          debugPrint('(FQ5)${groupIndex}|${groupNodeUid}}');
+          addEdgeByData(
+            nodeA: getNodeFromUid(groupNodeUid)!.data,
+            nodeB: getNodeFromUid(uidB)!.data,
+            isActive: edge.edgeExtra.isActive,
+            label: edge.edgeExtra.label,
+          );
+          deleteEdgeByUid(uidA: uidA, uidB: uidB);
+          _controller.graph.groups[groupIndex].outgoingLabels =
+              ((_controller.graph.groups[groupIndex].outgoingLabels)?? '') +
+                  ((edge.edgeExtra.label)?? '') +
+              ',';
+          debugPrint('(FQ9)${groupIndex}');
+        } else {
+          debugPrint('(FQ3)${groupIndex}|${groupNodeUid}}');
+          // _controller.graph.edges[i].a.data.uid = groupNodeUid;
+          addEdgeByData(
+            nodeA: getNodeFromUid(groupNodeUid)!.data,
+            nodeB: getNodeFromUid(uidB)!.data,
+            isActive: edge.edgeExtra.isActive,
+            label: edge.edgeExtra.label,
+          );
+          debugPrint('(FQ5)${groupIndex}|${groupNodeUid}}');
+          addEdgeByData(
+            nodeA: getNodeFromUid(uidA)!.data,
+            nodeB: getNodeFromUid(groupNodeUid)!.data,
+            isActive: edge.edgeExtra.isActive,
+            label: edge.edgeExtra.label,
+          );
+          deleteEdgeByUid(uidA: uidA, uidB: uidB);
+          _controller.graph.groups[groupIndex].incomingLabels =
+              (_controller.graph.groups[groupIndex].incomingLabels)?? '' +
+                  ((edge.edgeExtra.label)?? '') +
+              ',';
+          debugPrint('(FQ7)${groupIndex}|${groupNodeUid}}');
+        }
+      }
+    }
   }
 
   void showGroupsDialog() {
@@ -2161,6 +2247,7 @@ class _MyHomePageState extends State<MyHomePage> {
                             groupName: chosenGroup.name,
                             nodeUid: groupNodeUid,
                           );
+
                           setGroupIsCollapsed(
                             groupName: chosenGroup.name,
                             isCollapsed: true,
@@ -2188,6 +2275,9 @@ class _MyHomePageState extends State<MyHomePage> {
                             '(FH40)${chosenGroup.name}....${_controller.graph.groups}',
                           );
                         }
+                        reconnectNodesThroughGroupNode(
+                          chosenGroup.groupNodeUid!,
+                        );
                       }
 
                       setState(() {});
@@ -2196,19 +2286,19 @@ class _MyHomePageState extends State<MyHomePage> {
                     },
                   ),
 
-
                   ElevatedButton(
                     onPressed: () async {
                       print('(FH99)');
-                      String json = _controller.groupToJson(groupName: chosenGroup.name!);
-print('(FH99)${json}');
+                      String json = _controller.groupToJson(
+                        groupName: chosenGroup.name!,
+                      );
+                      print('(FH99)${json}');
                       var result = await databases!.createDocument(
                         databaseId: kDatabaseID,
                         collectionId: kGroups,
                         documentId: ID.unique(),
                         data: {
-                          "filename":
-                          chosenGroup.name,
+                          "filename": chosenGroup.name,
                           "json": json,
                           "buildNumber": buildNumber,
                         },
@@ -2219,7 +2309,8 @@ print('(FH99)${json}');
                     },
                     child: Text('Save group'),
                   ),
-
+                  Text('Incoming labels: ${chosenGroup.incomingLabels ?? ""}'),
+                  Text('Outgoing labels: ${chosenGroup.outgoingLabels ?? ""}'),
 
                   Divider(),
                   TextField(
@@ -2259,13 +2350,12 @@ print('(FH99)${json}');
                       debugPrint('(FI6)${createGroupButtonCaption}');
                       bool found = false;
                       for (
-                      int i = 0;
-                      i < _controller.graph.groups.length;
-                      i++
+                        int i = 0;
+                        i < _controller.graph.groups.length;
+                        i++
                       ) {
                         debugPrint(
-                          '(FI2)${groupNameTextEditingController
-                              .text}....${_controller.graph.groups[i].name}',
+                          '(FI2)${groupNameTextEditingController.text}....${_controller.graph.groups[i].name}',
                         );
                         if (groupNameTextEditingController.text ==
                             _controller.graph.groups[i].name) {
@@ -2288,23 +2378,26 @@ print('(FH99)${json}');
                             ),
                           );
                           setGroupIsCollapsed(
-                              groupName: groupNameTextEditingController.text,
-                              isCollapsed: false);
+                            groupName: groupNameTextEditingController.text,
+                            isCollapsed: false,
+                          );
                           chosenGroup = _controller.graph.groups.last;
-                          int groupNodeUid = createNode(kind: kg,
-                              isDataEntry: false);
+                          int groupNodeUid = createNode(
+                            kind: kg,
+                            isDataEntry: false,
+                          );
                           setGroupNodeUid(
                             groupName: chosenGroup.name,
                             nodeUid: groupNodeUid,
                           );
-                          debugPrint('(FI1)${groupNodeUid}....${chosenGroup
-                              .name}');
+                          debugPrint(
+                            '(FI1)${groupNodeUid}....${chosenGroup.name}',
+                          );
                         });
                         Navigator.of(context).pop();
                       }
                     },
                     child: Text(createGroupButtonCaption),
-
                   ),
                 ],
               ),
