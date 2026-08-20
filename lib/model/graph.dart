@@ -3,7 +3,7 @@ import 'dart:math';
 import '../main.dart';
 
 import 'package:vector_math/vector_math.dart';
-
+import 'package:flutter/material.dart';
 import 'config.dart';
 import 'edge.dart';
 import 'kd_tree.dart';
@@ -136,6 +136,51 @@ class ForceDirectedGraph {
       }
     }
   }
+
+
+  addToGraphfromJson(
+      String json, {
+        NodeDataDeserializer? deserializeData3,
+      }) {
+    final Map<String, dynamic> decodedJson = jsonDecode(json);
+    print(
+      '(FS1)${json}....${decodedJson}>>>>${deserializeData3.runtimeType}',
+    );
+
+    for (final nodeData in decodedJson['nodes']) {
+      Node node = nodeFromMap(nodeData, deserializeData3);
+      nodes.add(node);
+      // print('(FF1003A)${node}....${node.data!.uid},,,,${node.data.kind}----${node.data.doubleResult}');
+      print(
+        '(FS2)${nodes.length}<<<<${node}....${(node.data as NodeContents).uid},,,,${node.position}',
+      );
+    }
+    //The argument type 'NodeDataDeserializer<T>?' can't be assigned to the parameter type 'NodeDataDeserializer<Node<dynamic>>?'.
+    for (final edgeData in decodedJson['edges']) {
+      Node nodeAFromMap = nodeFromMap(edgeData['a'], deserializeData3);
+      Node nodeBFromMap = nodeFromMap(edgeData['b'], deserializeData3);
+      EdgeExtra ee = EdgeExtra(
+        isActive: edgeData['edgeExtra']['isActive'],
+        label: edgeData['edgeExtra']['label'],
+      );
+      print('(FS3)${edgeData}>>>>${deserializeData3.runtimeType}????${ee}');
+      Node nodeA = getNodeFromUidLocal(nodeAFromMap.data.uid)!;
+      Node nodeB = getNodeFromUidLocal(nodeBFromMap.data.uid)!;
+      Edge edge = Edge(nodeA, nodeB, ee);
+      edges.add(edge);
+      print('(FS4)${nodeA}....${nodeB},,,,${edge}');
+    }
+    if (decodedJson.keys.contains('groups')) {
+      for (final groupData in decodedJson['groups']) {
+        Group group = groupFromMap(groupData);
+        groups.add(group);
+        print(
+          '(FS5)${groups.length}<<<<${group}....${group.name},,,,${group.nodeUids}',
+        );
+      }
+    }
+  }
+
 
   void _createNTree(
     Node node,
@@ -302,19 +347,36 @@ class ForceDirectedGraph {
     List<Node> nodesOfGroup = [];
     for (int i = 0; i < nodes.length; i++) {
       if ((group!.nodeUids)!.contains(nodes[i].data.uid!)) {
-        nodesOfGroup.add(nodes[i]);
+        Node negatedNode = cloneNode(nodes[i]);
+        negatedNode.data.uid = -negatedNode.data.uid!;
+        nodesOfGroup.add(negatedNode);
       }
     }
+    int groupNodeUid = getGroupNodeUidFromGroupName(groupName)!;
+  //  Node groupNode = getNodeFromUid(groupNodeUid)!;
+    // nodesOfGroup.add(groupNode);
     List<Edge> edgesOfGroup = [];
     for (int i = 0; i < edges.length; i++) {
-      int uidA = edges[i].a.data.uid ?? -1;
-      int uidB = edges[i].b.data.uid ?? -1;
+    
+      int? uidA = edges[i].a.data.uid;
+      int? uidB = edges[i].b.data.uid;
+      debugPrint('(FS22A)${i}....${uidA},,,,${uidB}++++${group!.nodeUids}');
       if (((group!.nodeUids)!.contains(uidA)) &&
-          ((group!.nodeUids)!.contains(uidB))) {
-        edgesOfGroup.add(edges[i]);
+          ((group.nodeUids)!.contains(uidB))) {
+        Edge negatedEdge = cloneEdge(edges[i]);
+        negatedEdge.a.data.uid = -negatedEdge.a.data.uid!;
+        negatedEdge.b.data.uid = -negatedEdge.b.data.uid!;
+            edgesOfGroup.add(negatedEdge);
+        debugPrint('(FS22B)${i}....${edgesOfGroup.length},,,,${negatedEdge}++++${group.name}');
       }
     }
+    Group negatedGroup = cloneGroup(group!);
+    for (int i = 0; i < group!.nodeUids!.length; i++){
+      negatedGroup.nodeUids![i] = -negatedGroup.nodeUids![i];
+    }
 
+
+    group.groupNodeUid = -group.groupNodeUid!;
     return jsonEncode({
       'nodes': nodesOfGroup
           .map(
@@ -347,7 +409,85 @@ class ForceDirectedGraph {
             },
           )
           .toList(),
-      'groups': [group].map((e) => e!.toJson()).toList(),
+      'groups': [negatedGroup].map((e) => e!.toJson()).toList(),
     });
   }
+/*
+
+  int addGroupToGraph(
+    String json, {
+    NodeDataDeserializer? deserializeData3,
+    bool resetPosition = false,
+    // this.config = const GraphConfig(),
+    int uidMaster = 0,
+  }) {
+    final Map<String, dynamic> decodedJson = jsonDecode(json);
+    debugPrint('(FR7A)${decodedJson}');
+    Map<int, int> uidMap = {};
+    var nodeList = decodedJson['nodes'];
+    debugPrint('(FR8)$nodeList');
+    for (var node in nodeList) {
+      int oldUid = node['data']['uid'];
+      debugPrint('(FR9)${oldUid}');
+      uidMap[oldUid] = uidMaster;
+      uidMaster++;
+    }
+    //Map<String, dynamic> decJson = decodedJson['nodes'];
+    debugPrint('(FR10A)${uidMap}');
+
+    for (final nodeData in nodeList) {
+      debugPrint('(FR10B)${nodeData}');
+      Node node = nodeFromMap(nodeData, deserializeData3);
+      debugPrint('(FR10CA)${node}....${node.data.uid}');
+      // node.data.uid = uidMap[node.data.uid];
+      // debugPrint('(FR10CB)${node}....${node.data.uid}');
+      nodes.add(node);
+      print('(FR10D)${node}....${node.data!.uid},,,,${node.data.kind}----${node.data.doubleResult}');
+      // print(
+      //   '(FF1003B)${nodes.length}<<<<${node},,,,${node.position}',
+      // );
+    }
+    //The argument type 'NodeDataDeserializer<T>?' can't be assigned to the parameter type 'NodeDataDeserializer<Node<dynamic>>?'.
+    for (final edgeData in decodedJson['edges']) {
+      // Node nodeAFromMap = nodeFromMap(edgeData['a'], deserializeData3);
+      // Node nodeBFromMap = nodeFromMap(edgeData['b'], deserializeData3);
+      EdgeExtra ee = EdgeExtra(
+        isActive: edgeData['edgeExtra']['isActive'],
+        label: edgeData['edgeExtra']['label'],
+      );
+      // print('(FF1004A)${edgeData}>>>>${nodeAFromMap}????${ee.label}');
+      // print('(FF1004B)${nodeAFromMap.data.uid}');
+      // int uidAReMapped = nodeAFromMap.data.uid!;
+      // if (uidMap.keys.contains(nodeAFromMap.data.uid)){
+      //   uidAReMapped = uidMap[nodeAFromMap.data.uid]!;
+      // }
+      // Node nodeA = getNodeFromUidLocal(uidAReMapped)!;
+      // nodeA.data.uid = uidMap[nodeA.data.uid];
+      // int uidBReMapped = nodeBFromMap.data.uid!;
+      // if (uidMap.keys.contains(nodeBFromMap.data.uid)){
+      //   uidBReMapped = uidMap[nodeBFromMap.data.uid]!;
+      // }
+      // Node nodeB = getNodeFromUidLocal(uidBReMapped)!;
+      // nodeB.data.uid = uidMap[nodeB.data.uid];
+      // Edge edge = Edge(nodeA, nodeB, ee);
+      edges.add(edge);
+      print('(FF1005)${nodeA}....${nodeB},,,,${edge}');
+    }
+    if (decodedJson.keys.contains('groups')) {
+      for (final groupData in decodedJson['groups']) {
+        Group group = groupFromMap(groupData);
+        debugPrint('(FR99${groupData}....${group.groupNodeUid},,,,${group.nodeUids}');
+        for (int i = 0; i < group.nodeUids!.length; i++){
+          group.nodeUids![i] = uidMap[group.nodeUids![i]]!;
+        }
+        group.groupNodeUid = uidMap[group.groupNodeUid];
+        groups.add(group);
+        print(
+          '(FH85)${groups.length}<<<<${group}....${group.name},,,,${group.nodeUids}',
+        );
+      }
+    }
+    return uidMaster;
+  }
+*/
 }

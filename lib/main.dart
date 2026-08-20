@@ -14,7 +14,7 @@ import 'dart:convert';
 import 'package:function_tree/function_tree.dart';
 import 'package:expressions/expressions.dart';
 
-const buildNumber = 22;
+const buildNumber = 23;
 const double arrowHeight = 5;
 const double arrowWidth = 15;
 const double lineWidth = 2;
@@ -342,23 +342,30 @@ List<int> getNodeUidsFromString(String s) {
 final Group nullGroup = Group(name: '', nodeUids: [], isVisible: false);
 
 Group groupFromMap(Map<String, dynamic> groupMap) {
-  String nodeUidsString = groupMap['nodeUids'];
-
-  List<String> nodeUidsStringList = nodeUidsString.split(',');
-  List<int> nodeUidsList = [];
-  for (int i = 0; i < nodeUidsStringList.length; i++) {
-    nodeUidsList.add(int.tryParse(nodeUidsStringList[i]) ?? -1);
+  // String nodeUidsString = groupMap['nodeUids'];
+  //
+  // List<String> nodeUidsStringList = nodeUidsString.split(',');
+  // List<int> nodeUidsList = [];
+  // for (int i = 0; i < nodeUidsStringList.length; i++) {
+  //   nodeUidsList.add(int.tryParse(nodeUidsStringList[i]) ?? -1);
+  // }
+  String guid = groupMap['nodeUids'];
+  guid = guid.replaceAll('[', '');
+  guid = guid.replaceAll(']', '');
+  List<String> guidList = guid.split(',');
+  List<int> g = [];
+  for (int i = 0; i < guidList.length; i++) {
+    g.add((int.tryParse(guidList[i])) ?? 0);
   }
-  print('(FH86)${groupMap}....');
+  debugPrint('(FH86)${groupMap}....${guid},,,${guidList}++++${g}');
+
   Group group = Group(
     name: groupMap['name'],
-    nodeUids: nodeUidsList,
+    nodeUids: g,
     isVisible: groupMap['isVisible'],
     groupNodeUid: groupMap['groupNodeUid'],
   );
-  print(
-    '(FH1002)${nodeUidsString}....${groupMap},,,,${nodeUidsList}====${group}',
-  );
+  print('(FH1002)${groupMap}====${group}');
   return group;
 }
 
@@ -399,6 +406,16 @@ Group? getGroupFromGroupName(String? groupName) {
   for (int i = 0; i < _controller.graph.groups.length; i++) {
     if (groupName == _controller.graph.groups[i].name) {
       return _controller.graph.groups[i];
+    }
+  }
+  return null;
+}
+
+int? getGroupNodeUidFromGroupName(String? groupName) {
+  if (groupName == null) return null;
+  for (int i = 0; i < _controller.graph.groups.length; i++) {
+    if (groupName == _controller.graph.groups[i].name) {
+      return _controller.graph.groups[i].groupNodeUid!;
     }
   }
   return null;
@@ -515,7 +532,7 @@ void deleteEdgeByData({
   _controller.deleteEdgeByData(nodeA!, nodeB!);
 }
 
-int _uidMaster = -1;
+int _uidMaster = 1;
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
@@ -1119,10 +1136,10 @@ class _MyHomePageState extends State<MyHomePage> {
                             ) {
                               if (_controller.graph.groups[i].groupNodeUid ==
                                   data.uid) {
-                                _controller.graph.groups[i].groupNodeUid = null;
+                                _controller.graph.groups.removeAt(i);
                                 break;
-                              }
-                              for (
+                              } else {
+                                for (
                                 int j = 0;
                                 j <
                                     _controller
@@ -1131,12 +1148,15 @@ class _MyHomePageState extends State<MyHomePage> {
                                         .nodeUids!
                                         .length;
                                 j++
-                              ) {
-                                if (_controller.graph.groups[i].nodeUids![j] ==
-                                    data.uid) {
-                                  _controller.graph.groups[i].nodeUids!
-                                      .removeAt(j);
-                                  break;
+                                ) {
+                                  if (_controller.graph.groups[i]
+                                      .nodeUids![j] ==
+                                      data.uid) {
+                                    _controller.graph.groups[i].nodeUids!
+                                        .removeAt(j);
+
+                                    break;
+                                  }
                                 }
                               }
                             }
@@ -1301,6 +1321,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Widget drawNode(NodeContents data) {
     //1print('(FF430)${data.uid}');
+
     if (data.isDataEntry ?? false) {
       return Text((data.doubleResult ?? '').toString());
     } else {
@@ -1310,8 +1331,9 @@ class _MyHomePageState extends State<MyHomePage> {
         case (ke):
           return Text('ERROR}....${inputString}>e${getResult(data)}');
         case (kg):
+          final Group nullGroup = Group(name: 'NO GROUP');
           final String groupName =
-              (getGroupFromNodeUid(data.uid)!.name) ?? 'NO Group';
+              (((getGroupFromNodeUid(data.uid))?? nullGroup).name) ?? 'NO Group';
           return Text('G: ' + groupName);
         case (kd):
           print('(FFQ1)${data.uid}....${getResult(data)}');
@@ -1829,9 +1851,9 @@ class _MyHomePageState extends State<MyHomePage> {
     if ((groupName == null) || (nodeUid == null)) {
       return;
     }
-    print('(FH8A)');
+    print('(FH8AA)');
     for (int i = 0; i < _controller.graph.groups.length; i++) {
-      print('(FH8A)');
+      print('(FH8AB)');
       if (groupName == _controller.graph.groups[i].name) {
         print('(FH8B)${i}....${_controller.graph.groups[i].nodeUids!.length}');
         if (_controller.graph.groups[i].nodeUids!.length == 0) {
@@ -1918,9 +1940,15 @@ class _MyHomePageState extends State<MyHomePage> {
       int uidB = edge.b.data.uid!;
       bool aInGroup = chosenGroup.nodeUids!.contains(uidA);
       bool bInGroup = chosenGroup.nodeUids!.contains(uidB);
-      bool aOrBIsGroupNode = ((chosenGroup.groupNodeUid == uidA) || (chosenGroup.groupNodeUid == uidB));
-      debugPrint('(FQ1)${i}.${edge.edgeExtra.label},${uidA};${uidB}:${aInGroup}@${bInGroup}');
-      if (aOrBIsGroupNode || (aInGroup && bInGroup) || (!aInGroup && !bInGroup)) {
+      bool aOrBIsGroupNode =
+          ((chosenGroup.groupNodeUid == uidA) ||
+          (chosenGroup.groupNodeUid == uidB));
+      debugPrint(
+        '(FQ1)${i}.${edge.edgeExtra.label},${uidA};${uidB}:${aInGroup}@${bInGroup}',
+      );
+      if (aOrBIsGroupNode ||
+          (aInGroup && bInGroup) ||
+          (!aInGroup && !bInGroup)) {
         //DO NOTHING
       } else {
         int groupIndex = getGroupIndexFromName(chosenGroup.name!)!;
@@ -1943,8 +1971,8 @@ class _MyHomePageState extends State<MyHomePage> {
           );
           deleteEdgeByUid(uidA: uidA, uidB: uidB);
           _controller.graph.groups[groupIndex].outgoingLabels =
-              ((_controller.graph.groups[groupIndex].outgoingLabels)?? '') +
-                  ((edge.edgeExtra.label)?? '') +
+              ((_controller.graph.groups[groupIndex].outgoingLabels) ?? '') +
+              ((edge.edgeExtra.label) ?? '') +
               ',';
           debugPrint('(FQ9)${groupIndex}');
         } else {
@@ -1965,9 +1993,8 @@ class _MyHomePageState extends State<MyHomePage> {
           );
           deleteEdgeByUid(uidA: uidA, uidB: uidB);
           _controller.graph.groups[groupIndex].incomingLabels =
-              (_controller.graph.groups[groupIndex].incomingLabels)?? '' +
-                  ((edge.edgeExtra.label)?? '') +
-              ',';
+              (_controller.graph.groups[groupIndex].incomingLabels) ??
+              '' + ((edge.edgeExtra.label) ?? '') + ',';
           debugPrint('(FQ7)${groupIndex}|${groupNodeUid}}');
         }
       }
@@ -2247,7 +2274,10 @@ class _MyHomePageState extends State<MyHomePage> {
                             groupName: chosenGroup.name,
                             nodeUid: groupNodeUid,
                           );
-
+                          addNodeToGroup(
+                            groupName: chosenGroup.name,
+                            nodeUid: groupNodeUid,
+                          );
                           setGroupIsCollapsed(
                             groupName: chosenGroup.name,
                             isCollapsed: true,
@@ -2311,8 +2341,38 @@ class _MyHomePageState extends State<MyHomePage> {
                   ),
                   Text('Incoming labels: ${chosenGroup.incomingLabels ?? ""}'),
                   Text('Outgoing labels: ${chosenGroup.outgoingLabels ?? ""}'),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
 
-                  Divider(),
+  void showCreateGroupDialog() {
+    // bool? chosenGroupIsVisible;
+    const String kCreateGroupButtonCaption = 'Create group';
+    const String kCreateGroupButtonCaptionGroupExists = 'Group exists';
+
+    String createGroupButtonCaption = kCreateGroupButtonCaption;
+    if (_controller.graph.groups.length < 1)
+      print('(FH80)${_controller.graph.groups.length}');
+    else
+      print(
+        '(FH81)${_controller.graph.groups.length}...${_controller.graph.groups[0].name},,,,${chosenGroup.name}',
+      );
+    showDialog<double>(
+      context: context,
+      builder: (BuildContext context) {
+        debugPrint('(FI7)${createGroupButtonCaption}');
+        return StatefulBuilder(
+          builder: (context, setStateMain) {
+            return AlertDialog(
+              title: Text('Create group'),
+              content: Column(
+                children: [
+                  ///////
                   TextField(
                     controller: groupNameTextEditingController,
                     onChanged: (value) async {
@@ -2390,14 +2450,95 @@ class _MyHomePageState extends State<MyHomePage> {
                             groupName: chosenGroup.name,
                             nodeUid: groupNodeUid,
                           );
+                          addNodeToGroup(
+                            groupName: chosenGroup.name,
+                            nodeUid: groupNodeUid,
+                          );
                           debugPrint(
-                            '(FI1)${groupNodeUid}....${chosenGroup.name}',
+                            '(FI1)${groupNodeUid}....${chosenGroup.name},,,,${getGroupFromGroupName(chosenGroup.name)!.nodeUids}',
                           );
                         });
                         Navigator.of(context).pop();
                       }
                     },
                     child: Text(createGroupButtonCaption),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void showLoadGroupDialog() async {
+    models.DocumentList result = await databases!.listDocuments(
+      databaseId: kDatabaseID,
+      collectionId: kGroups,
+    );
+    print('(FR1)${result.total}');
+    print('(FR2)${result.documents.first}');
+    print('(FR3)${result.documents.first.data}');
+
+    models.Document? chosenGroupDocument;
+    showDialog<double>(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setStateMain) {
+            return AlertDialog(
+              title: Text('Load group'),
+              content: Column(
+                children: [
+                  (result.total < 1)
+                      ? Text('No groups')
+                      : DropdownButton<models.Document>(
+                          //  key: ValueKey(widget),
+                          value: result.documents[0],
+                          hint: const Text('Please select group'),
+                          items: result.documents
+                              .map<DropdownMenuItem<models.Document>>((
+                                models.Document item,
+                              ) {
+                                return DropdownMenuItem<models.Document>(
+                                  value: item,
+                                  child: Text((item.data['filename']) ?? '?'),
+                                );
+                              })
+                              .toList(),
+                          elevation: 2,
+                          onChanged: (value) {
+                            setState(() {
+                              chosenGroupDocument = value;
+                            });
+                            setStateMain(() {});
+                            if (chosenGroupDocument == null) {
+                              debugPrint('(FH352A)');
+                            } else {
+                              debugPrint(
+                                '(FH352B)${chosenGroupDocument!.data}....${_uidMaster}',
+                              );
+                            }
+                          },
+                          isExpanded: true,
+                          focusColor: Colors.transparent,
+                        ),
+                  ElevatedButton(
+                    child: const Text('Load'),
+                    onPressed: () async {
+                      String json = chosenGroupDocument!.data['json'];
+                      _controller.graph.addToGraphfromJson(
+                        json,
+                        deserializeData3: deserializeNodeContents,
+                      );
+                      // _uidMaster = _controller.graph.addGroupToGraph(
+                      //   json,
+                      //   deserializeData3: deserializeNodeContents,
+                      //   uidMaster: _uidMaster,
+                      // );
+                      //   for (bool node in decodedRawJson['nodes']){
+                    },
                   ),
                 ],
               ),
@@ -2791,9 +2932,16 @@ class _MyHomePageState extends State<MyHomePage> {
         ),
         ElevatedButton(
           onPressed: () {
-            showGroupsDialog();
+            // showGroupsDialog();
+            showCreateGroupDialog();
           },
-          child: const Text('groups'),
+          child: const Text('create group'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            showLoadGroupDialog();
+          },
+          child: const Text('load group'),
         ),
 
         Slider(

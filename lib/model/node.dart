@@ -36,6 +36,9 @@ class Node {
   Node(this.data, [Vector2? position])
       : position = position ?? (Vector2.random() - Vector2(0.5, 0.5)) * 200;
 
+
+
+
   /// Calculate the repulsive force following Coulomb's law.
   ///
   /// The force is calculated based on the distance between the current [Node] and
@@ -143,4 +146,11 @@ class Node {
   void unStatic() {
     _isFixed = false;
   }
+}
+
+Node cloneNode(Node n){
+  NodeContents d = NodeContents(uid: n.data.uid, kind: n.data.kind, isDataEntry: n.data.isDataEntry);
+  Vector2 v = Vector2(n.position.x, n.position.y);
+  Node nn = Node(d, v);
+  return nn;
 }

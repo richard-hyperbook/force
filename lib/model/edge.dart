@@ -83,3 +83,11 @@ class Edge {
   @override
   int get hashCode => a.hashCode ^ b.hashCode;
 }
+
+Edge cloneEdge(Edge e){
+  EdgeExtra eex = EdgeExtra(isActive: e.edgeExtra.isActive, label: e.edgeExtra.label);
+  Node a = cloneNode(e.a);
+  Node b = cloneNode(e.b);
+  Edge ee = Edge(a, b, eex);
+  return ee;
+}
