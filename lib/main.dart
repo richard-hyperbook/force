@@ -14,7 +14,7 @@ import 'dart:convert';
 import 'package:function_tree/function_tree.dart';
 import 'package:expressions/expressions.dart';
 
-const buildNumber = 23;
+const buildNumber = 24;
 const double arrowHeight = 5;
 const double arrowWidth = 15;
 const double lineWidth = 2;
@@ -444,7 +444,7 @@ void dumpGraph() {
   }
   for (int i = 0; i < _controller.graph.groups.length; i++) {
     print(
-      '(FFDG)${_controller.graph.groups[i].name}....${_controller.graph.groups[i].nodeUids},,,,${_controller.graph.groups[i].isVisible}||||${_controller.graph.groups[i].groupNodeUid}::::${_controller.graph.groups[i].isCollapsed}',
+      '(FFDG)${_controller.graph.groups[i].name}....${_controller.graph.groups[i].nodeUids},,,,${_controller.graph.groups[i].isVisible}||||${_controller.graph.groups[i].groupNodeUid}::::${_controller.graph.groups[i].isCollapsed}////${_controller.graph.groups[i].incomingLabels}****${_controller.graph.groups[i].outgoingLabels}',
     );
   }
 }
@@ -568,7 +568,7 @@ class _MyHomePageState extends State<MyHomePage> {
     super.initState();
     initAppwrite();
 
-    _uidMaster = 0;
+    _uidMaster = 1;
     _controller =
         ForceDirectedGraphController(
           graph: ForceDirectedGraph.generateNTree(
@@ -617,17 +617,21 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void setControllerResult({int? uid, dynamic value}) {
-    //1print('(FF331)${uid}....${value}');
+    print('(FF331)${uid}....${value}<<<<${value.runtimeType}');
     for (int i = 0; i < _controller.graph.nodes.length; i++) {
       if (_controller.graph.nodes[i].data.uid == uid) {
         if (value is double) {
           _controller.graph.nodes[i].data.doubleResult = value;
         } else {
-          if (value is DateTime) {
-            _controller.graph.nodes[i].data.dateTimeResult = value;
+          if (value is int) {
+            _controller.graph.nodes[i].data.doubleResult = value.toDouble();
           } else {
-            if (value is String) {
-              _controller.graph.nodes[i].data.stringResult = value;
+            if (value is DateTime) {
+              _controller.graph.nodes[i].data.dateTimeResult = value;
+            } else {
+              if (value is String) {
+                _controller.graph.nodes[i].data.stringResult = value;
+              }
             }
           }
         }
@@ -751,9 +755,11 @@ class _MyHomePageState extends State<MyHomePage> {
         '(FF5)${nodeContents.uid}----${nodeContents.kind}++++${edge.a.data.uid}....${edge.a.data.kind}>>>>${edge.b.data.uid},,,,${edge.b.data.kind}',
       );
       if (edge.b.data.uid == nodeContents.uid) {
-        print('(FF51)${nodeContents.kind}');
+        print('(FF51A)${nodeContents.kind}');
         if ((edge.edgeExtra.label ?? '') != '') {
+          print('(FF51B)');
           if (edge.a.data.kind == kg) {
+            print('(FF51C)');
             for (int j = 0; j < _controller.graph.edges.length; j++) {
               if (_controller.graph.edges[j].b.data.uid == edge.a.data.uid) {
                 if (_controller.graph.edges[j].edgeExtra.label ==
@@ -771,6 +777,7 @@ class _MyHomePageState extends State<MyHomePage> {
           } else {
             mapOfLabels[edge.edgeExtra.label!] =
                 (edge.a.data.doubleResult ?? 0) as num;
+            print('(FF51Z)${mapOfLabels}');
           }
           print(
             '(FFE1)${edge.edgeExtra.label}....${edge.a.data.doubleResult},,,',
@@ -781,7 +788,7 @@ class _MyHomePageState extends State<MyHomePage> {
       }
     }
     print('(FFE4)${edgeFound}');
-    if (edgeFound) {
+    if ( /*edgeFound*/ true) {
       print('(FFE2)${nodeContents.input}....');
 
       /* ////////////CODE FOR UNLABELLED EDGES
@@ -799,7 +806,9 @@ class _MyHomePageState extends State<MyHomePage> {
           Expression expression = Expression.parse(input!);
           final evaluator = const ExpressionEvaluator();
           total = evaluator.eval(expression, mapOfLabels);
-          print('(FFL1)${mapOfLabels}....${expression}');
+          print(
+            '(FFL1)${nodeContents.uid}----${mapOfLabels}....${expression}>>>>${total}',
+          );
           setNodeKind(nodeContents.uid, kd);
         } catch (e) {
           total = 0.0;
@@ -1140,17 +1149,19 @@ class _MyHomePageState extends State<MyHomePage> {
                                 break;
                               } else {
                                 for (
-                                int j = 0;
-                                j <
-                                    _controller
-                                        .graph
-                                        .groups[i]
-                                        .nodeUids!
-                                        .length;
-                                j++
+                                  int j = 0;
+                                  j <
+                                      _controller
+                                          .graph
+                                          .groups[i]
+                                          .nodeUids!
+                                          .length;
+                                  j++
                                 ) {
-                                  if (_controller.graph.groups[i]
-                                      .nodeUids![j] ==
+                                  if (_controller
+                                          .graph
+                                          .groups[i]
+                                          .nodeUids![j] ==
                                       data.uid) {
                                     _controller.graph.groups[i].nodeUids!
                                         .removeAt(j);
@@ -1333,7 +1344,8 @@ class _MyHomePageState extends State<MyHomePage> {
         case (kg):
           final Group nullGroup = Group(name: 'NO GROUP');
           final String groupName =
-              (((getGroupFromNodeUid(data.uid))?? nullGroup).name) ?? 'NO Group';
+              (((getGroupFromNodeUid(data.uid)) ?? nullGroup).name) ??
+              'NO Group';
           return Text('G: ' + groupName);
         case (kd):
           print('(FFQ1)${data.uid}....${getResult(data)}');
@@ -2481,7 +2493,7 @@ class _MyHomePageState extends State<MyHomePage> {
     print('(FR2)${result.documents.first}');
     print('(FR3)${result.documents.first.data}');
 
-    models.Document? chosenGroupDocument;
+    models.Document? chosenGroupDocument = result.documents[0];
     showDialog<double>(
       context: context,
       builder: (BuildContext context) {
@@ -2528,10 +2540,12 @@ class _MyHomePageState extends State<MyHomePage> {
                     child: const Text('Load'),
                     onPressed: () async {
                       String json = chosenGroupDocument!.data['json'];
-                      _controller.graph.addToGraphfromJson(
+                      _uidMaster = _controller.graph.addToGraphfromJson(
                         json,
                         deserializeData3: deserializeNodeContents,
+                        uidMaster: _uidMaster,
                       );
+                      Navigator.pop(context);
                       // _uidMaster = _controller.graph.addGroupToGraph(
                       //   json,
                       //   deserializeData3: deserializeNodeContents,

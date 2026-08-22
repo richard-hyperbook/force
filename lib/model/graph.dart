@@ -138,9 +138,10 @@ class ForceDirectedGraph {
   }
 
 
-  addToGraphfromJson(
+  int addToGraphfromJson(
       String json, {
         NodeDataDeserializer? deserializeData3,
+        int uidMaster = 0,
       }) {
     final Map<String, dynamic> decodedJson = jsonDecode(json);
     print(
@@ -173,13 +174,53 @@ class ForceDirectedGraph {
     if (decodedJson.keys.contains('groups')) {
       for (final groupData in decodedJson['groups']) {
         Group group = groupFromMap(groupData);
+        for (int i = 0; i < groups.length; i++){
+          if (groups[i].name == group.name){
+            group.name = group.name! + '+';
+          }
+        }
         groups.add(group);
         print(
           '(FS5)${groups.length}<<<<${group}....${group.name},,,,${group.nodeUids}',
         );
       }
     }
-  }
+
+
+    Map<int, int> uidMap = {};
+    for (var node in nodes) {
+      if (node.data.uid! < 0) {
+        int oldUid = node.data.uid!;
+        debugPrint('(FT9)${oldUid}');
+        uidMap[oldUid] = uidMaster;
+        uidMaster++;
+      }
+    }
+    for (var node in nodes) {
+      if (node.data.uid! < 0) {
+        node.data.uid = uidMap[node.data.uid];
+      }
+    }
+    for (var edge in edges){
+      if (edge.a.data.uid! < 0){
+        edge.a.data.uid = uidMap[edge.a.data.uid];
+      }
+      if (edge.b.data.uid! < 0){
+        edge.b.data.uid = uidMap[edge.b.data.uid];
+      }
+    }
+    for (var group in groups){
+      for (int i = 0; i < group.nodeUids!.length; i++){
+        if (group.nodeUids![i] < 0){
+          group.nodeUids![i] = uidMap[group.nodeUids![i]]!;
+        }
+      }
+      if (group.groupNodeUid! < 0){
+        group.groupNodeUid = uidMap[group.groupNodeUid]!;
+      }
+    }
+    return uidMaster;
+}
 
 
   void _createNTree(
@@ -374,9 +415,7 @@ class ForceDirectedGraph {
     for (int i = 0; i < group!.nodeUids!.length; i++){
       negatedGroup.nodeUids![i] = -negatedGroup.nodeUids![i];
     }
-
-
-    group.groupNodeUid = -group.groupNodeUid!;
+    negatedGroup.groupNodeUid = -negatedGroup.groupNodeUid!;
     return jsonEncode({
       'nodes': nodesOfGroup
           .map(
