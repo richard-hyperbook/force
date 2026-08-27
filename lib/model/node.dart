@@ -3,7 +3,6 @@ import '../main.dart';
 
 import 'edge.dart';
 
-
 const double kminDistance = 0.001;
 
 /// A class representing a node in a graph, holding a reference to arbitrary
@@ -34,10 +33,7 @@ class Node {
   /// Optionally a [position] can be provided, otherwise a random position is
   /// generated.
   Node(this.data, [Vector2? position])
-      : position = position ?? (Vector2.random() - Vector2(0.5, 0.5)) * 200;
-
-
-
+    : position = position ?? (Vector2.random() - Vector2(0.5, 0.5)) * 200;
 
   /// Calculate the repulsive force following Coulomb's law.
   ///
@@ -46,7 +42,9 @@ class Node {
   Vector2 calculateRepulsionForce(Node other, {required double k}) {
     final distance = position.distanceTo(other.position) + kminDistance;
     final direction = (position - other.position).normalized();
-    print('(FJ73)${other.data.uid}....${k},,,,${distance}++++${direction}<<<<${direction * k * k / distance}');
+    print(
+      '(FJ73)${other.data.uid}....${k},,,,${distance}++++${direction}<<<<${direction * k * k / distance}',
+    );
     return direction * k * k / distance;
   }
 
@@ -97,7 +95,9 @@ class Node {
     _force += friction;
     _velocity += _force / mass;
     _velocity *= damping;
-    print('(FJ63)${data.uid}....${position}++++${friction}&&&&${_force}____${mass}%%%%${damping}');
+    print(
+      '(FJ63)${data.uid}....${position}++++${friction}&&&&${_force}____${mass}%%%%${damping}',
+    );
     position += _velocity * scaling;
 
     _force = Vector2.zero();
@@ -112,7 +112,7 @@ class Node {
   /// Connects the current [Node] with the [other] [Node] by creating
   /// (and returning) an [Edge]
   Edge connect(Node other, EdgeExtra edgeExtra) {
-    return Edge(this, other, edgeExtra);//TODO handle edgeextra
+    return Edge(this, other, edgeExtra); //TODO handle edgeextra
   }
 
   /// Returns a string representation of the [Node] instance, including the
@@ -148,8 +148,16 @@ class Node {
   }
 }
 
-Node cloneNode(Node n){
-  NodeContents d = NodeContents(uid: n.data.uid, kind: n.data.kind, isDataEntry: n.data.isDataEntry);
+Node cloneNode(Node n) {
+  NodeContents d = NodeContents(
+    uid: n.data.uid,
+    kind: n.data.kind,
+    isDataEntry: n.data.isDataEntry,
+    input: n.data.input,
+    isStartNode: n.data.isStartNode,
+    isEndNode: n.data.isEndNode,
+    isHighlight: n.data.isHighlight,
+  );
   Vector2 v = Vector2(n.position.x, n.position.y);
   Node nn = Node(d, v);
   return nn;

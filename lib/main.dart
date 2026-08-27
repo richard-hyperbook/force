@@ -14,7 +14,7 @@ import 'dart:convert';
 import 'package:function_tree/function_tree.dart';
 import 'package:expressions/expressions.dart';
 
-const buildNumber = 24;
+const buildNumber = 25;
 const double arrowHeight = 5;
 const double arrowWidth = 15;
 const double lineWidth = 2;
@@ -421,6 +421,15 @@ int? getGroupNodeUidFromGroupName(String? groupName) {
   return null;
 }
 
+int? getGroupIndexFromGroupName(String? groupName) {
+  if (groupName == null) return null;
+  for (int i = 0; i < _controller.graph.groups.length; i++) {
+    return i;
+  }
+  return null;
+}
+
+
 late final ForceDirectedGraphController _controller;
 
 List<EdgeExtra> _edgeExtras = [];
@@ -439,7 +448,7 @@ void dumpGraph() {
     //  );
     print(
       //'(FFDF)${edge.a.position}||||${edge.a.mass}....${edge.b.position}!!!!${edge.b.mass},,,,${edge.distance}????${edge.angle}',
-      '(FFDF)${edge.a.data.uid},,,,${edge.b.data.uid}',
+      '(FFDF)${edge.a.data.uid},,,,${edge.b.data.uid}----${edge.edgeExtra.label}',
     );
   }
   for (int i = 0; i < _controller.graph.groups.length; i++) {
@@ -768,7 +777,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       (_controller.graph.edges[j].a.data.doubleResult ?? 0)
                           as num;
                   print(
-                    '(FFM1)${edge.edgeExtra.label}....${_controller.graph.edges[j].a.data.doubleResult}',
+                    '(FFM1)${edge.edgeExtra.label}....${_controller.graph.edges[j].a.data.doubleResult}>>>>${mapOfLabels}',
                   );
                   break;
                 }
@@ -977,20 +986,24 @@ class _MyHomePageState extends State<MyHomePage> {
                       // double? doubleValue = double.tryParse(value);
                       print('(FH5)${value}++++${data.uid}');
                       double? doubleValue = double.tryParse(value);
-                      setState(() {
-                        if (doubleValue == null) {
-                          setControllerKind(uid: data.uid, kind: ks);
-                        } else {
-                          setControllerKind(uid: data.uid, kind: kd);
-                          double? doubleValue = double.tryParse(value);
-                          setControllerInput(uid: data.uid, value: value);
-                          setControllerResult(
-                            uid: data.uid,
-                            value: doubleValue ?? 'Y',
-                          );
-                        }
-                        setControllerInput(uid: data.uid, value: value);
-                      });
+
+                        setState(() {
+                          // if (doubleValue == null) {
+                          //   setControllerKind(uid: data.uid, kind: ks);
+                          // } else {
+                          //   setControllerKind(uid: data.uid, kind: kd);
+                          //   double? doubleValue = double.tryParse(value);
+                          //   setControllerInput(uid: data.uid, value: value);
+                          //   setControllerResult(
+                          //     uid: data.uid,
+                          //     value: doubleValue ?? 'Y',
+                          //   );
+                          // }
+                          if (data.kind != kg) {
+                            setControllerInput(uid: data.uid, value: value);
+                          }
+                        });
+
                       Navigator.of(context).pop();
                     },
                   ),
@@ -1048,16 +1061,10 @@ class _MyHomePageState extends State<MyHomePage> {
                         child: const Text('Enter'),
                         onPressed: () {
                           String value = textEditingController!.text;
-                          // double? doubleValue = double.tryParse(value);
-                          //1print('(FF11)${value}++++${data.uid}');
-                          double? doubleValue = double.tryParse(value);
                           setState(() {
-                            if (doubleValue == null) {
-                              setControllerKind(uid: data.uid, kind: ks);
-                            } else {
-                              setControllerKind(uid: data.uid, kind: kd);
+                            if (data.kind != kg) {
+                              setControllerInput(uid: data.uid, value: value);
                             }
-                            setControllerInput(uid: data.uid, value: value);
                           });
                           Navigator.of(context).pop();
                         },
@@ -2013,6 +2020,145 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
+  void disconnectNodesThroughGroupNode(int groupNodeUid) {
+    for (int i = 0; i < _controller.graph.edges.length; i++) {
+      Edge edge = _controller.graph.edges[i];
+      int uidA = edge.a.data.uid!;
+      int uidB = edge.b.data.uid!;
+      bool aInGroup = chosenGroup.nodeUids!.contains(uidA);
+      bool bInGroup = chosenGroup.nodeUids!.contains(uidB);
+      bool aIsGroupNode =
+      (chosenGroup.groupNodeUid == uidA);
+      bool bIsGroupNode =
+      (chosenGroup.groupNodeUid == uidB);
+      debugPrint(
+        '(FK1)${i}.${edge.edgeExtra.label},${uidA};${uidB}:${aInGroup}@${bInGroup}|${aIsGroupNode}~${bIsGroupNode}',
+      );
+      if (aIsGroupNode){
+        for (int j = 0; j < _controller.graph.edges.length; j++){
+          Edge edge2 = _controller.graph.edges[j];
+          int uidB2 = edge2.b.data.uid!;
+          bool b2GroupNode = (chosenGroup.groupNodeUid! == uidB2);
+          String? label = edge.edgeExtra.label;
+          bool isSameLabel = (label == edge2.edgeExtra.label);
+
+            if (b2GroupNode && isSameLabel){
+              addEdgeByData(nodeA: edge2.a.data, nodeB: edge.b.data,
+                  isActive: (edge.edgeExtra.isActive! || edge2.edgeExtra.isActive!),
+                  label: edge.edgeExtra.label);
+              deleteEdgeByData(nodeA: edge.a.data, nodeB: edge.b.data);
+              deleteEdgeByData(nodeA: edge2.a.data, nodeB: edge2.b.data);
+            }
+      //    List<String> incomingLablesList = chosenGroup.incomingLabels!.split(',');
+          int groupIndex = getGroupIndexFromGroupName(chosenGroup.name)!;
+          _controller.graph.groups[groupIndex].incomingLabels!.replaceAll(label! + ',', '');
+          _controller.graph.groups[groupIndex].outgoingLabels!.replaceAll(label! + ',', '');
+          debugPrint('(FK7)${groupIndex}|${groupNodeUid}}?${label}+${_controller.graph.groups[groupIndex].incomingLabels}£${_controller.graph.groups[groupIndex].outgoingLabels}');
+        }
+      }
+    }
+  }
+
+
+
+  void collapseGroup() {
+    debugPrint(
+      '(FI23)${chosenGroup.nodeUids}....${chosenGroup.name}',
+    );
+    if (chosenGroup == nullGroup) {
+      toastification.show(
+        context: context,
+        title: Text('Select group'),
+      );
+    } else {
+      if (chosenGroup.groupNodeUid != null) {
+        vector.Vector2 pos = getNodeFromUid(
+          chosenGroup.groupNodeUid,
+        )!.position;
+        for (
+        int i = 0;
+        i < chosenGroup.nodeUids!.length;
+        i++
+        ) {
+          setNodePosition(chosenGroup.nodeUids![i], pos);
+          print(
+            '(FI31B)${i}....${chosenGroup.nodeUids![i]},,,,${pos}',
+          );
+        }
+      } else {
+        double topY = -double.maxFinite;
+        double topX = 0.0;
+        int? topUid;
+        List<int> nodeUids = chosenGroup.nodeUids!;
+        for (int i = 0; i < nodeUids.length; i++) {
+          print('(FI24A)${topY}....${i},,,,${nodeUids}');
+          double y = getNodeFromUid(nodeUids[i])!.position.y;
+          print('(FI24B)${topY}....${i},,,,${nodeUids}');
+          double x = getNodeFromUid(nodeUids[i])!.position.x;
+          print('(FI24C)${topY}....${i},,,,${nodeUids}');
+
+          if (y > topY) {
+            topY = y;
+            topX = x;
+            topUid = nodeUids[i];
+          }
+        }
+        debugPrint('(FI11)${topX}....${topY}...${topUid}');
+        int groupNodeUid = createNode(
+          kind: kg,
+          isDataEntry: false,
+        );
+        debugPrint('(FI12)${topX}....${topY}...${topUid}');
+        setGroupNodeUid(
+          groupName: chosenGroup.name,
+          nodeUid: groupNodeUid,
+        );
+        addNodeToGroup(
+          groupName: chosenGroup.name,
+          nodeUid: groupNodeUid,
+        );
+        setGroupIsCollapsed(
+          groupName: chosenGroup.name,
+          isCollapsed: true,
+        );
+        debugPrint('(FI13)${topX}....${topY}...${topUid}');
+        setNodePosition(
+          groupNodeUid,
+          vector.Vector2(topX, topY),
+        );
+        debugPrint(
+          '(FI14)${topX}....${topY}...${topUid}????${nodeUids}',
+        );
+        setState(() {
+          for (int i = 0; i < nodeUids.length; i++) {
+            setNodePosition(
+              nodeUids[i],
+              vector.Vector2(topX, topY),
+            );
+            print(
+              '(FI31)${i}....${nodeUids[i]},,,,${topX}<<<<${topY}',
+            );
+          }
+        });
+        print(
+          '(FH40)${chosenGroup.name}....${_controller.graph.groups}',
+        );
+      }
+      reconnectNodesThroughGroupNode(
+        chosenGroup.groupNodeUid!,
+      );
+    }
+
+    setState(() {});
+    dumpGraph();
+    Navigator.of(context).pop();
+
+  }
+
+  void expandGroup() {
+    disconnectNodesThroughGroupNode(chosenGroup.groupNodeUid!);
+  }
+
   void showGroupsDialog() {
     // bool? chosenGroupIsVisible;
     const String kCreateGroupButtonCaption = 'Create group';
@@ -2230,102 +2376,23 @@ class _MyHomePageState extends State<MyHomePage> {
                       }
                     },
                   ),
-                  ElevatedButton(
-                    child: Text('Collapse group'),
-
-                    onPressed: () {
-                      debugPrint('(FI22)${chosenGroup}');
-                      debugPrint(
-                        '(FI23)${chosenGroup.nodeUids}....${chosenGroup.name}',
-                      );
-                      if (chosenGroup == nullGroup) {
-                        toastification.show(
-                          context: context,
-                          title: Text('Select group'),
-                        );
-                      } else {
-                        if (chosenGroup.groupNodeUid != null) {
-                          vector.Vector2 pos = getNodeFromUid(
-                            chosenGroup.groupNodeUid,
-                          )!.position;
-                          for (
-                            int i = 0;
-                            i < chosenGroup.nodeUids!.length;
-                            i++
-                          ) {
-                            setNodePosition(chosenGroup.nodeUids![i], pos);
-                            print(
-                              '(FI31B)${i}....${chosenGroup.nodeUids![i]},,,,${pos}',
-                            );
-                          }
-                        } else {
-                          double topY = -double.maxFinite;
-                          double topX = 0.0;
-                          int? topUid;
-                          List<int> nodeUids = chosenGroup.nodeUids!;
-                          for (int i = 0; i < nodeUids.length; i++) {
-                            print('(FI24A)${topY}....${i},,,,${nodeUids}');
-                            double y = getNodeFromUid(nodeUids[i])!.position.y;
-                            print('(FI24B)${topY}....${i},,,,${nodeUids}');
-                            double x = getNodeFromUid(nodeUids[i])!.position.x;
-                            print('(FI24C)${topY}....${i},,,,${nodeUids}');
-
-                            if (y > topY) {
-                              topY = y;
-                              topX = x;
-                              topUid = nodeUids[i];
-                            }
-                          }
-                          debugPrint('(FI11)${topX}....${topY}...${topUid}');
-                          int groupNodeUid = createNode(
-                            kind: kg,
-                            isDataEntry: false,
-                          );
-                          debugPrint('(FI12)${topX}....${topY}...${topUid}');
-                          setGroupNodeUid(
-                            groupName: chosenGroup.name,
-                            nodeUid: groupNodeUid,
-                          );
-                          addNodeToGroup(
-                            groupName: chosenGroup.name,
-                            nodeUid: groupNodeUid,
-                          );
-                          setGroupIsCollapsed(
-                            groupName: chosenGroup.name,
-                            isCollapsed: true,
-                          );
-                          debugPrint('(FI13)${topX}....${topY}...${topUid}');
-                          setNodePosition(
-                            groupNodeUid,
-                            vector.Vector2(topX, topY),
-                          );
-                          debugPrint(
-                            '(FI14)${topX}....${topY}...${topUid}????${nodeUids}',
-                          );
-                          setState(() {
-                            for (int i = 0; i < nodeUids.length; i++) {
-                              setNodePosition(
-                                nodeUids[i],
-                                vector.Vector2(topX, topY),
-                              );
-                              print(
-                                '(FI31)${i}....${nodeUids[i]},,,,${topX}<<<<${topY}',
-                              );
-                            }
-                          });
-                          print(
-                            '(FH40)${chosenGroup.name}....${_controller.graph.groups}',
-                          );
-                        }
-                        reconnectNodesThroughGroupNode(
-                          chosenGroup.groupNodeUid!,
-                        );
-                      }
-
-                      setState(() {});
-                      dumpGraph();
-                      Navigator.of(context).pop();
-                    },
+                  Row(
+                    children: [
+                      ElevatedButton(
+                        child: Text('Collapse group'),
+                        onPressed: () {
+                          debugPrint('(FI22)${chosenGroup}');
+                          collapseGroup();
+                           },
+                      ),
+                      ElevatedButton(
+                        child: Text('Expand group'),
+                        onPressed: () {
+                          debugPrint('(FI22)${chosenGroup}');
+                          expandGroup();
+                        },
+                      ),
+                    ],
                   ),
 
                   ElevatedButton(
@@ -2335,18 +2402,37 @@ class _MyHomePageState extends State<MyHomePage> {
                         groupName: chosenGroup.name!,
                       );
                       print('(FH99)${json}');
-                      var result = await databases!.createDocument(
-                        databaseId: kDatabaseID,
-                        collectionId: kGroups,
-                        documentId: ID.unique(),
-                        data: {
-                          "filename": chosenGroup.name,
-                          "json": json,
-                          "buildNumber": buildNumber,
-                        },
-                        // permissions: [Permission.read(Role.any())], // optional
-                        // transactionId: '<TRANSACTION_ID>', // optional
-                      );
+                      models.DocumentList docList = await databases!
+                          .listDocuments(
+                            databaseId: kDatabaseID,
+                            collectionId: kGroups,
+                            queries: [
+                              Query.equal(kColumnFilename, chosenGroup.name),
+                            ],
+                          );
+                      if (docList.total < 1) {
+                        var result = await databases!.createDocument(
+                          databaseId: kDatabaseID,
+                          collectionId: kGroups,
+                          documentId: ID.unique(),
+                          data: {
+                            "filename": chosenGroup.name,
+                            "json": json,
+                            "buildNumber": buildNumber,
+                          },
+                        );
+                      } else {
+                        var result = await databases!.updateDocument(
+                          databaseId: kDatabaseID,
+                          collectionId: kGroups,
+                          documentId: docList.documents.first.$id,
+                          data: {
+                            "filename": chosenGroup.name,
+                            "json": json,
+                            "buildNumber": buildNumber,
+                          },
+                        );
+                      }
                       Navigator.of(context).pop();
                     },
                     child: Text('Save group'),
