@@ -14,7 +14,8 @@ import 'dart:convert';
 import 'package:function_tree/function_tree.dart';
 import 'package:expressions/expressions.dart';
 
-const buildNumber = 25;
+
+const buildNumber = 26;
 const double arrowHeight = 5;
 const double arrowWidth = 15;
 const double lineWidth = 2;
@@ -23,6 +24,7 @@ const double chainYincrement = boxHeight + 10;
 const double charWidth = 10;
 const double boxPadding = 5;
 //NodeContents? edgeStartNodeContents;
+const String kLabelSplitCharacter = '|';
 
 NodeContents? edgeInputNodeContentsA;
 NodeContents? edgeCommonNodeContentsA;
@@ -424,7 +426,9 @@ int? getGroupNodeUidFromGroupName(String? groupName) {
 int? getGroupIndexFromGroupName(String? groupName) {
   if (groupName == null) return null;
   for (int i = 0; i < _controller.graph.groups.length; i++) {
-    return i;
+    if (_controller.graph.groups[i].name == groupName){
+      return i;
+    }
   }
   return null;
 }
@@ -453,7 +457,7 @@ void dumpGraph() {
   }
   for (int i = 0; i < _controller.graph.groups.length; i++) {
     print(
-      '(FFDG)${_controller.graph.groups[i].name}....${_controller.graph.groups[i].nodeUids},,,,${_controller.graph.groups[i].isVisible}||||${_controller.graph.groups[i].groupNodeUid}::::${_controller.graph.groups[i].isCollapsed}////${_controller.graph.groups[i].incomingLabels}****${_controller.graph.groups[i].outgoingLabels}',
+      '(FFDG)${_controller.graph.groups[i].name}....${_controller.graph.groups[i].nodeUids},,,,${_controller.graph.groups[i].isVisible}||||${_controller.graph.groups[i].groupNodeUid}::::${_controller.graph.groups[i].isCollapsed}}',
     );
   }
 }
@@ -467,6 +471,13 @@ int? getEdgeIntegerFromNodeUids({int? uidA, int? uidB}) {
   }
   return null;
 }
+
+Edge? getEdgeFromNodeUids({int? uidA, int? uidB}) {
+  int? i = getEdgeIntegerFromNodeUids(uidA: uidA, uidB: uidB);
+  if (i == null) return null;
+  return _controller.graph.edges[i];
+}
+
 
 EdgeExtra? getEdgeExtraFromNodeUids({int? uidA, int? uidB}) {
   int? i = getEdgeIntegerFromNodeUids(uidA: uidA, uidB: uidB);
@@ -512,20 +523,26 @@ String? getEdgeLabel({int? uidA, int? uidB}) {
 void setEdgeLabel({int? uidA, int? uidB, String? label}) {
   int? i = getEdgeIntegerFromNodeUids(uidA: uidA, uidB: uidB);
   if (i == null) return;
-  _controller.graph.edges[i].edgeExtra.label = label;
+  if ((_controller.graph.edges[i].edgeExtra.label == null) || (_controller.graph.edges[i].edgeExtra.label == '')){
+    _controller.graph.edges[i].edgeExtra.label = label;
+  } else {
+    _controller.graph.edges[i].edgeExtra.label = (_controller.graph.edges[i].edgeExtra.label)! + kLabelSplitCharacter + (label?? '');
+  }
+
 }
 
 void addEdgeByData({
   required NodeContents? nodeA,
   required NodeContents? nodeB,
   required bool? isActive,
-  required String? label,
+  String? label,
 }) {
+  // String actualLabel = label?? 'x${labelMaster}';
   debugPrint('(FQ4)${nodeA!.uid}!${nodeB!.uid}');
   _controller.addEdgeByData(
     nodeA,
     nodeB,
-    EdgeExtra(isActive: isActive, label: label),
+    EdgeExtra(isActiveParam: isActive, labelParam: label),
   );
 
   print(
@@ -542,6 +559,8 @@ void deleteEdgeByData({
 }
 
 int _uidMaster = 1;
+int labelMaster = 1;
+
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
@@ -578,6 +597,7 @@ class _MyHomePageState extends State<MyHomePage> {
     initAppwrite();
 
     _uidMaster = 1;
+    labelMaster = 1;
     _controller =
         ForceDirectedGraphController(
           graph: ForceDirectedGraph.generateNTree(
@@ -771,8 +791,11 @@ class _MyHomePageState extends State<MyHomePage> {
             print('(FF51C)');
             for (int j = 0; j < _controller.graph.edges.length; j++) {
               if (_controller.graph.edges[j].b.data.uid == edge.a.data.uid) {
+                //TODO multiple labels through group nodes
                 if (_controller.graph.edges[j].edgeExtra.label ==
                     edge.edgeExtra.label) {
+
+
                   mapOfLabels[edge.edgeExtra.label!] =
                       (_controller.graph.edges[j].a.data.doubleResult ?? 0)
                           as num;
@@ -784,9 +807,17 @@ class _MyHomePageState extends State<MyHomePage> {
               }
             }
           } else {
-            mapOfLabels[edge.edgeExtra.label!] =
+            if (edge.edgeExtra.label!.contains(kLabelSplitCharacter)){
+              List<String> labelList = edge.edgeExtra.label!.split(kLabelSplitCharacter);
+              for (String label in labelList){
+                mapOfLabels[label] =
                 (edge.a.data.doubleResult ?? 0) as num;
-            print('(FF51Z)${mapOfLabels}');
+              }
+            } else {
+              mapOfLabels[edge.edgeExtra.label!] =
+              (edge.a.data.doubleResult ?? 0) as num;
+              print('(FF51Z)${mapOfLabels}');
+            }
           }
           print(
             '(FFE1)${edge.edgeExtra.label}....${edge.a.data.doubleResult},,,',
@@ -1118,7 +1149,6 @@ class _MyHomePageState extends State<MyHomePage> {
                               isDataEntry: false,
                             ),
                             isActive: true,
-                            label: '',
                           );
                           _uidMaster++;
                           // _nodes.clear();
@@ -1144,7 +1174,7 @@ class _MyHomePageState extends State<MyHomePage> {
                         child: const Text('Delete node'),
                         onPressed: () {
                           setState(() {
-                            //1print('(FF411)${data.uid}');
+                            print('(FF411)${data.uid}');
                             for (
                               int i = 0;
                               i < _controller.graph.groups.length;
@@ -1187,19 +1217,20 @@ class _MyHomePageState extends State<MyHomePage> {
                                       data.uid) ||
                                   (_controller.graph.edges[i].b.data.uid ==
                                       data.uid)) {
-                                //1print(
-                                //1      '(FF412)${_controller.graph.edges[i].a.data.uid}....${_controller.graph.edges[i].b.data.uid}',
-                                //1 );
+                                print(
+                                      '(FF412)${_controller.graph.edges[i].a.data.uid}....${_controller.graph.edges[i].b.data.uid}',
+                                );
                                 /*_controller.*/
                                 deleteEdgeByData(
                                   nodeA: _controller.graph.edges[i].a.data,
                                   nodeB: _controller.graph.edges[i].a.data,
                                 );
                               }
-                              //1print('(FF413)${data.uid}');
-                              _controller.deleteNodeByData(data);
+
                             }
-                            setControllerInput(uid: data.uid, value: null);
+                            // setControllerInput(uid: data.uid, value: null);
+                            print('(FF413)${data.uid}');
+                            _controller.deleteNodeByData(data);
                           });
                           Navigator.of(context).pop();
                         },
@@ -1629,6 +1660,11 @@ class _MyHomePageState extends State<MyHomePage> {
       reverse = true;
     }
     print('(FF2)${distance}....${reverse}');
+    // final String label = (getEdgeFromNodeUids(uidA: a.uid, uidB: b.uid)!.edgeExtra!.label)?? '?';
+    // List<Widget> labelList = [Text(label)];
+    // if (_controller.graph.edges.contains(getEdgeFromNodeUids(uidA: a.uid, uidB: b.uid))){
+    //
+    // }
 
     Widget arrow = Transform.rotate(
       angle: angle,
@@ -1786,7 +1822,6 @@ class _MyHomePageState extends State<MyHomePage> {
               nodeA: _controller.graph.nodes[i].data,
               nodeB: _controller.graph.nodes[j].data,
               isActive: isActive,
-              label: '',
             );
           }
         }
@@ -1989,10 +2024,10 @@ class _MyHomePageState extends State<MyHomePage> {
             label: edge.edgeExtra.label,
           );
           deleteEdgeByUid(uidA: uidA, uidB: uidB);
-          _controller.graph.groups[groupIndex].outgoingLabels =
-              ((_controller.graph.groups[groupIndex].outgoingLabels) ?? '') +
-              ((edge.edgeExtra.label) ?? '') +
-              ',';
+          // _controller.graph.groups[groupIndex].outgoingLabels =
+          //     ((_controller.graph.groups[groupIndex].outgoingLabels) ?? '') +
+          //     ((edge.edgeExtra.label) ?? '') +
+          //     ',';
           debugPrint('(FQ9)${groupIndex}');
         } else {
           debugPrint('(FQ3)${groupIndex}|${groupNodeUid}}');
@@ -2011,9 +2046,9 @@ class _MyHomePageState extends State<MyHomePage> {
             label: edge.edgeExtra.label,
           );
           deleteEdgeByUid(uidA: uidA, uidB: uidB);
-          _controller.graph.groups[groupIndex].incomingLabels =
-              (_controller.graph.groups[groupIndex].incomingLabels) ??
-              '' + ((edge.edgeExtra.label) ?? '') + ',';
+          // _controller.graph.groups[groupIndex].incomingLabels =
+          //     (_controller.graph.groups[groupIndex].incomingLabels) ??
+          //     '' + ((edge.edgeExtra.label) ?? '') + ',';
           debugPrint('(FQ7)${groupIndex}|${groupNodeUid}}');
         }
       }
@@ -2051,11 +2086,36 @@ class _MyHomePageState extends State<MyHomePage> {
             }
       //    List<String> incomingLablesList = chosenGroup.incomingLabels!.split(',');
           int groupIndex = getGroupIndexFromGroupName(chosenGroup.name)!;
-          _controller.graph.groups[groupIndex].incomingLabels!.replaceAll(label! + ',', '');
-          _controller.graph.groups[groupIndex].outgoingLabels!.replaceAll(label! + ',', '');
-          debugPrint('(FK7)${groupIndex}|${groupNodeUid}}?${label}+${_controller.graph.groups[groupIndex].incomingLabels}£${_controller.graph.groups[groupIndex].outgoingLabels}');
+          // _controller.graph.groups[groupIndex].incomingLabels!.replaceAll(label! + ',', '');
+          // _controller.graph.groups[groupIndex].outgoingLabels!.replaceAll(label! + ',', '');
+          debugPrint('(FK7A)${groupIndex}|${groupNodeUid}}?${label}');
         }
       }
+
+      if (bIsGroupNode){
+        for (int j = 0; j < _controller.graph.edges.length; j++){
+          Edge edge2 = _controller.graph.edges[j];
+          int uidA2 = edge2.a.data.uid!;
+          bool a2GroupNode = (chosenGroup.groupNodeUid! == uidA2);
+          String? label = edge.edgeExtra.label;
+          bool isSameLabel = (label == edge2.edgeExtra.label);
+
+          if (a2GroupNode && isSameLabel){
+            addEdgeByData(nodeA: edge.a.data, nodeB: edge2.b.data,
+                isActive: (edge.edgeExtra.isActive! || edge2.edgeExtra.isActive!),
+                label: edge.edgeExtra.label);
+            deleteEdgeByData(nodeA: edge.a.data, nodeB: edge.b.data);
+            deleteEdgeByData(nodeA: edge2.a.data, nodeB: edge2.b.data);
+          }
+          //    List<String> incomingLablesList = chosenGroup.incomingLabels!.split(',');
+          int groupIndex = getGroupIndexFromGroupName(chosenGroup.name)!;
+          // _controller.graph.groups[groupIndex].incomingLabels!.replaceAll(label! + ',', '');
+          // _controller.graph.groups[groupIndex].outgoingLabels!.replaceAll(label! + ',', '');
+          debugPrint('(FK7B)${groupIndex}|${groupNodeUid}}?${label}');
+        }
+      }
+
+
     }
   }
 
@@ -2144,9 +2204,9 @@ class _MyHomePageState extends State<MyHomePage> {
           '(FH40)${chosenGroup.name}....${_controller.graph.groups}',
         );
       }
-      reconnectNodesThroughGroupNode(
-        chosenGroup.groupNodeUid!,
-      );
+      // reconnectNodesThroughGroupNode(
+      //   chosenGroup.groupNodeUid!,
+      // );
     }
 
     setState(() {});
@@ -2156,7 +2216,8 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void expandGroup() {
-    disconnectNodesThroughGroupNode(chosenGroup.groupNodeUid!);
+    // disconnectNodesThroughGroupNode(chosenGroup.groupNodeUid!);
+    Navigator.of(context).pop();
   }
 
   void showGroupsDialog() {
@@ -2437,8 +2498,8 @@ class _MyHomePageState extends State<MyHomePage> {
                     },
                     child: Text('Save group'),
                   ),
-                  Text('Incoming labels: ${chosenGroup.incomingLabels ?? ""}'),
-                  Text('Outgoing labels: ${chosenGroup.outgoingLabels ?? ""}'),
+                  // Text('Incoming labels: ${chosenGroup.incomingLabels ?? ""}'),
+                  // Text('Outgoing labels: ${chosenGroup.outgoingLabels ?? ""}'),
                 ],
               ),
             );
@@ -3043,7 +3104,16 @@ class _MyHomePageState extends State<MyHomePage> {
           },
           child: const Text('load group'),
         ),
-
+        ElevatedButton(
+          onPressed: () {
+            setState(() {
+              for (int i = 0; i < _controller.graph.nodes.length; i++){
+                _controller.graph.nodes[i].data.isHighlight = true;
+              }
+            });
+          },
+          child: const Text('highlight all nodes'),
+        ),
         Slider(
           value: _scale,
           min: _controller.minScale,

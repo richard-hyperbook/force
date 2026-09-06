@@ -116,8 +116,8 @@ class ForceDirectedGraph {
       Node nodeAFromMap = nodeFromMap(edgeData['a'], deserializeData3);
       Node nodeBFromMap = nodeFromMap(edgeData['b'], deserializeData3);
       EdgeExtra ee = EdgeExtra(
-        isActive: edgeData['edgeExtra']['isActive'],
-        label: edgeData['edgeExtra']['label'],
+        isActiveParam: edgeData['edgeExtra']['isActive'],
+        labelParam: edgeData['edgeExtra']['label'],
       );
       print('(FF1004)${edgeData}>>>>${deserializeData3.runtimeType}????${ee}');
       Node nodeA = getNodeFromUidLocal(nodeAFromMap.data.uid)!;
@@ -137,16 +137,13 @@ class ForceDirectedGraph {
     }
   }
 
-
   int addToGraphfromJson(
-      String json, {
-        NodeDataDeserializer? deserializeData3,
-        int uidMaster = 0,
-      }) {
+    String json, {
+    NodeDataDeserializer? deserializeData3,
+    int uidMaster = 0,
+  }) {
     final Map<String, dynamic> decodedJson = jsonDecode(json);
-    print(
-      '(FS1)${json}....${decodedJson}>>>>${deserializeData3.runtimeType}',
-    );
+    print('(FS1)${json}....${decodedJson}>>>>${deserializeData3.runtimeType}');
 
     for (final nodeData in decodedJson['nodes']) {
       Node node = nodeFromMap(nodeData, deserializeData3);
@@ -161,8 +158,8 @@ class ForceDirectedGraph {
       Node nodeAFromMap = nodeFromMap(edgeData['a'], deserializeData3);
       Node nodeBFromMap = nodeFromMap(edgeData['b'], deserializeData3);
       EdgeExtra ee = EdgeExtra(
-        isActive: edgeData['edgeExtra']['isActive'],
-        label: edgeData['edgeExtra']['label'],
+        isActiveParam: edgeData['edgeExtra']['isActive'],
+        labelParam: edgeData['edgeExtra']['label'],
       );
       print('(FS3)${edgeData}>>>>${deserializeData3.runtimeType}????${ee}');
       Node nodeA = getNodeFromUidLocal(nodeAFromMap.data.uid)!;
@@ -174,8 +171,8 @@ class ForceDirectedGraph {
     if (decodedJson.keys.contains('groups')) {
       for (final groupData in decodedJson['groups']) {
         Group group = groupFromMap(groupData);
-        for (int i = 0; i < groups.length; i++){
-          if (groups[i].name == group.name){
+        for (int i = 0; i < groups.length; i++) {
+          if (groups[i].name == group.name) {
             group.name = group.name! + '+';
           }
         }
@@ -185,7 +182,6 @@ class ForceDirectedGraph {
         );
       }
     }
-
 
     Map<int, int> uidMap = {};
     for (var node in nodes) {
@@ -201,27 +197,26 @@ class ForceDirectedGraph {
         node.data.uid = uidMap[node.data.uid];
       }
     }
-    for (var edge in edges){
-      if (edge.a.data.uid! < 0){
+    for (var edge in edges) {
+      if (edge.a.data.uid! < 0) {
         edge.a.data.uid = uidMap[edge.a.data.uid];
       }
-      if (edge.b.data.uid! < 0){
+      if (edge.b.data.uid! < 0) {
         edge.b.data.uid = uidMap[edge.b.data.uid];
       }
     }
-    for (var group in groups){
-      for (int i = 0; i < group.nodeUids!.length; i++){
-        if (group.nodeUids![i] < 0){
+    for (var group in groups) {
+      for (int i = 0; i < group.nodeUids!.length; i++) {
+        if (group.nodeUids![i] < 0) {
           group.nodeUids![i] = uidMap[group.nodeUids![i]]!;
         }
       }
-      if (group.groupNodeUid! < 0){
+      if (group.groupNodeUid! < 0) {
         group.groupNodeUid = uidMap[group.groupNodeUid]!;
       }
     }
     return uidMaster;
-}
-
+  }
 
   void _createNTree(
     Node node,
@@ -242,7 +237,7 @@ class ForceDirectedGraph {
       children.add(newNode);
       addNode(newNode);
       addEdge(
-        Edge(node, newNode, EdgeExtra(isActive: true)),
+        Edge(node, newNode, EdgeExtra(isActiveParam: true)),
       ); //TOD handle edgextra
       remainingNodes--;
     }
@@ -273,9 +268,19 @@ class ForceDirectedGraph {
 
   void addEdge(Edge edge) {
     if (edges.contains(edge)) {
-      throw Exception('Edge already exists');
+      print('(FV1)Multiple edges between nodes');
+      // throw Exception('Edge already exists');
+      int? edgeIndex = getEdgeIntegerFromNodeUids(
+        uidA: edge.a.data.uid,
+        uidB: edge.b.data.uid,
+      )!;
+      edges[edgeIndex].edgeExtra.label =
+          ((edges[edgeIndex].edgeExtra.label) ?? '') +
+          kLabelSplitCharacter +
+          ((edge.edgeExtra.label) ?? '');
+    } else {
+      edges.add(edge);
     }
-    edges.add(edge);
   }
 
   void deleteNode(Node node) {
@@ -394,11 +399,10 @@ class ForceDirectedGraph {
       }
     }
     int groupNodeUid = getGroupNodeUidFromGroupName(groupName)!;
-  //  Node groupNode = getNodeFromUid(groupNodeUid)!;
+    //  Node groupNode = getNodeFromUid(groupNodeUid)!;
     // nodesOfGroup.add(groupNode);
     List<Edge> edgesOfGroup = [];
     for (int i = 0; i < edges.length; i++) {
-    
       int? uidA = edges[i].a.data.uid;
       int? uidB = edges[i].b.data.uid;
       debugPrint('(FS22A)${i}....${uidA},,,,${uidB}++++${group!.nodeUids}');
@@ -407,12 +411,14 @@ class ForceDirectedGraph {
         Edge negatedEdge = cloneEdge(edges[i]);
         negatedEdge.a.data.uid = -negatedEdge.a.data.uid!;
         negatedEdge.b.data.uid = -negatedEdge.b.data.uid!;
-            edgesOfGroup.add(negatedEdge);
-        debugPrint('(FS22B)${i}....${edgesOfGroup.length},,,,${negatedEdge}++++${group.name}');
+        edgesOfGroup.add(negatedEdge);
+        debugPrint(
+          '(FS22B)${i}....${edgesOfGroup.length},,,,${negatedEdge}++++${group.name}',
+        );
       }
     }
     Group negatedGroup = cloneGroup(group!);
-    for (int i = 0; i < group!.nodeUids!.length; i++){
+    for (int i = 0; i < group!.nodeUids!.length; i++) {
       negatedGroup.nodeUids![i] = -negatedGroup.nodeUids![i];
     }
     negatedGroup.groupNodeUid = -negatedGroup.groupNodeUid!;
@@ -451,7 +457,8 @@ class ForceDirectedGraph {
       'groups': [negatedGroup].map((e) => e!.toJson()).toList(),
     });
   }
-/*
+
+  /*
 
   int addGroupToGraph(
     String json, {

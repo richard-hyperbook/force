@@ -7,16 +7,16 @@ class Group {
   bool? isVisible;
   int? groupNodeUid;
   bool? isCollapsed;
-  String? incomingLabels;
-  String? outgoingLabels;
+  // String? incomingLabels;
+  // String? outgoingLabels;
 
   Group({
     this.name,
     this.nodeUids,
     this.isVisible,
     this.groupNodeUid,
-    this.incomingLabels,
-    this.outgoingLabels,
+    // this.incomingLabels,
+    // this.outgoingLabels,
   });
 
   Map<String, dynamic> toJson() {
@@ -26,8 +26,8 @@ class Group {
       'isVisible': isVisible,
       'groupNodeUid': groupNodeUid,
       'isCollapsed': isCollapsed,
-      'incomingLabels': incomingLabels,
-      'outgoingLabels': outgoingLabels,
+      // 'incomingLabels': incomingLabels,
+      // 'outgoingLabels': outgoingLabels,
     };
     print(
       '(FH84)${this.name}....${this.nodeUids},,,,${this.groupNodeUid}@@@@${m}',
@@ -58,8 +58,8 @@ Group cloneGroup(Group g) {
     nodeUids: nu,
     isVisible: g.isVisible,
     groupNodeUid: g.groupNodeUid,
-    incomingLabels: g.incomingLabels,
-    outgoingLabels: g.outgoingLabels,
+    // incomingLabels: g.incomingLabels,
+    // outgoingLabels: g.outgoingLabels,
   );
   return gg;
 }

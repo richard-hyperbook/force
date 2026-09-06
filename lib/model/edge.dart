@@ -3,12 +3,23 @@ import 'dart:math';
 import 'package:vector_math/vector_math.dart';
 
 import 'node.dart';
+import '../main.dart';
+
+const String labelPrefix = 'x';
 
 class EdgeExtra {
 
   bool? isActive;
   String? label;
-  EdgeExtra({this.isActive, this.label});
+  EdgeExtra({bool? isActiveParam, String? labelParam}){
+    isActive = isActiveParam;
+    if (labelParam == null){
+      label = labelPrefix + labelMaster.toString();
+      labelMaster++;
+    } else {
+      label = labelParam;
+    }
+  }
 
   Map<String, dynamic> toJson() {
     Map<String, dynamic> m = {
@@ -85,7 +96,7 @@ class Edge {
 }
 
 Edge cloneEdge(Edge e){
-  EdgeExtra eex = EdgeExtra(isActive: e.edgeExtra.isActive, label: e.edgeExtra.label);
+  EdgeExtra eex = EdgeExtra(isActiveParam: e.edgeExtra.isActive, labelParam: e.edgeExtra.label);
   Node a = cloneNode(e.a);
   Node b = cloneNode(e.b);
   Edge ee = Edge(a, b, eex);
